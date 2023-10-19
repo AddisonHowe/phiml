@@ -10,15 +10,18 @@ def get_binary_function(tcrit, p0, p1):
 def jump_function(t, tcrit, p0, p1):
     return (t < tcrit) * p0 + (t >= tcrit) * p1
 
-def select_device():
-    device = (
-        "cuda"
-        if torch.cuda.is_available()
-        else "mps"
-        if torch.backends.mps.is_available()
-        else "cpu"
-    )
-    return device
+def select_device(overwrite=None):
+    if overwrite:
+        return overwrite
+    if torch.cuda.is_available():
+        return 'cuda'
+    try:
+        if torch.backends.mps.is_available():
+            return 'mps'
+        else:
+            return 'cpu'
+    except AttributeError as e:
+        return 'cpu'
 
 def mean_cov_loss(y_sim, y_obs):
     mu_sim = torch.mean(y_sim, dim=-2)

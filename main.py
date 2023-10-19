@@ -2,7 +2,8 @@
 
 """
 
-import os
+import os, sys, time
+import argparse
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -13,35 +14,62 @@ from helpers import select_device, jump_function, mean_cov_loss
 # from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 
-SEED = 0
-OUTDIR = f"out/model_training"
-TRAINING_DATA = "data/model_training_data"
-VALIDATION_DATA = "data/model_validation_data"
-NSIMS_TRAINING = 5
-NSIMS_VALIDATION = 2
-NDIM = 2
-NSIGS = 2
-DT = 1e-3
-NCELLS = 100
-SIGMA=1e-3
+parser = argparse.ArgumentParser()
+parser.add_argument('-o', '--outdir', type=str, default="out/model_training")
+parser.add_argument('--name', type=str, default="model")
+parser.add_argument('-t', '--training_data', type=str, default="data/model_training_data")
+parser.add_argument('-v', '--validation_data', type=str, default="data/model_validation_data")
+parser.add_argument('-nt', '--nsims_training', type=int, default=100)
+parser.add_argument('-nv', '--nsims_validation', type=int, default=30)
+parser.add_argument('-nd', '--ndims', type=int, default=2)
+parser.add_argument('-ns', '--nsigs', type=int, default=2)
+parser.add_argument('-nc', '--ncells', type=int, default=100)
+parser.add_argument('-dt', '--dt', type=float, default=1e-3)
+parser.add_argument('--sigma', type=float, default=1e-3)
 
-USE_GPU = True
-batch_size = 8
+parser.add_argument('--use_gpu', action="store_true")
+parser.add_argument('-e', '--num_epochs', type=int, default=50)
+parser.add_argument('-b', '--batch_size', type=int, default=32)
+parser.add_argument('--learning_rate', type=float, default=1e-3)
+parser.add_argument('--momentum', type=float, default=0.9)
 
-device = select_device() if USE_GPU else 'cpu'
+parser.add_argument('--seed', type=int, default=0)
+args = parser.parse_args()
+
+outdir = args.outdir
+modelname = args.name
+datdir_train = args.training_data
+datdir_valid = args.validation_data
+nsims_train = args.nsims_training
+nsims_valid = args.nsims_validation
+ndims = args.ndims
+nsigs = args.nsigs
+dt = args.dt
+ncells = args.ncells
+sigma = args.sigma
+use_gpu = args.use_gpu
+batch_size = args.batch_size
+num_epochs = args.num_epochs
+learning_rate = args.learning_rate
+momentum = args.momentum
+seed = args.seed
+
+time0 = time.time()
+
+device = select_device() if use_gpu else 'cpu'
 print(f"Using device: {device}")
 
-rng = np.random.default_rng(seed=SEED)
+rng = np.random.default_rng(seed=seed)
 torch.manual_seed(int(rng.integers(100000, 2**32)))
 
 train_dataset = LandscapeSimulationDataset(
-    TRAINING_DATA, NSIMS_TRAINING, NDIM, 
+    datdir_train, nsims_train, ndims, 
     transform='tensor', 
     target_transform='tensor'
 )
 
 validation_dataset = LandscapeSimulationDataset(
-    VALIDATION_DATA, NSIMS_VALIDATION, NDIM, 
+    datdir_valid, nsims_valid, ndims, 
     transform='tensor', 
     target_transform='tensor'
 )
@@ -57,22 +85,18 @@ validation_dataloader = DataLoader(validation_dataset,
 # Construct the model
 f_signal = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
 model = PhiNN(
-    ndim=NDIM, nsig=NSIGS, f_signal=f_signal, 
-    ncells=NCELLS, 
-    sigma=SIGMA,
+    ndim=ndims, nsig=nsigs, f_signal=f_signal, 
+    ncells=ncells, 
+    sigma=sigma,
     device=device,
 ).to(device)
 
 outdir = "out/model_training"
 os.makedirs(outdir, exist_ok=True)
 
-LEARNING_RATE = 1e-3
-MOMENTUM = 0.9
-
-
 loss_fn = mean_cov_loss
 optimizer = torch.optim.SGD(model.parameters(), 
-                            lr=LEARNING_RATE, momentum=MOMENTUM)
+                            lr=learning_rate, momentum=momentum)
 
 def train_one_epoch(epoch_index):
     running_loss = 0.
@@ -84,7 +108,7 @@ def train_one_epoch(epoch_index):
         optimizer.zero_grad()
 
         # Evolve forward to get predicted state
-        x1_pred = model(input.to(device), dt=DT)
+        x1_pred = model(input.to(device), dt=dt)
 
         # Compute loss and its gradients
         loss = loss_fn(x1_pred, x1.to(device))
@@ -99,6 +123,7 @@ def train_one_epoch(epoch_index):
             last_loss = running_loss / batch_size  # loss per batch
             print('  batch {} loss: {}'.format(i + 1, last_loss))
             running_loss = 0.
+            sys.stdout.flush()
 
     return last_loss
 
@@ -109,10 +134,9 @@ def train_one_epoch(epoch_index):
 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 # writer = SummaryWriter('runs/fashion_trainer_{}'.format(timestamp))
 
-NUM_EPOCHS = 3
 best_vloss = 1_000_000
-for epoch in range(NUM_EPOCHS):
-    print(f'EPOCH {epoch + 1}:')
+for epoch in range(num_epochs):
+    print(f'EPOCH {epoch + 1}:', flush=True)
     # Make sure gradient tracking is on, and do a pass over the data
     model.train(True)
     avg_loss = train_one_epoch(epoch)
@@ -132,5 +156,8 @@ for epoch in range(NUM_EPOCHS):
     # Track best performance, and save the model's state
     if avg_vloss < best_vloss:
         best_vloss = avg_vloss
-        model_path = f"{OUTDIR}/model_{timestamp}_{epoch}"
+        model_path = f"{outdir}/{modelname}_{timestamp}_{epoch}"
         torch.save(model.state_dict(), model_path)
+
+time1 = time.time()
+print(f"Finished in {time1-time0:.3f} seconds.")

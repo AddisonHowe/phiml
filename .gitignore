@@ -2,6 +2,7 @@
 .vscode/
 out/
 logs/
+jobs/
 **/.DS_Store
 
 # Byte-compiled / optimized / DLL files
