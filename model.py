@@ -42,18 +42,28 @@ class PhiNN(nn.Module):
 
         # Potential Neural Network: Maps ndims to a scalar. 
         activation1 = nn.Tanh
-        hidden_dim1 = 64 if not testing else 3
-        self.phi_nn = nn.Sequential(
-            nn.Linear(ndim, hidden_dim1, bias=include_bias),
-            activation1(),
-            nn.Linear(hidden_dim1, hidden_dim1, bias=include_bias),
-            activation1(),
-            nn.Linear(hidden_dim1, 1, bias=include_bias),
-        )
+        if testing:
+            self.phi_nn = nn.Sequential(
+                nn.Linear(ndim, 3, bias=False),
+                activation1(),
+                nn.Linear(3, 3, bias=False),
+                activation1(),
+                nn.Linear(3, 1, bias=False),
+            )
+        else:
+            self.phi_nn = nn.Sequential(
+                nn.Linear(ndim, 64),
+                activation1(),
+                nn.Linear(64, 64),
+                activation1(),
+                # nn.Linear(64, 64),
+                # activation1(),
+                nn.Linear(64, 1),
+            )
 
         # Tilt Neural Network: Linear tilt values. Maps nsigs to ndims.
         self.tilt_nn = nn.Sequential(
-            nn.Linear(self.nsig, self.ndim, bias=include_bias),
+            nn.Linear(self.nsig, self.ndim, bias=include_bias)
         )
 
         if init_weights:
@@ -99,7 +109,8 @@ class PhiNN(nn.Module):
             tensor of shape (ndim,)
         """
         val_phi = self.phi_nn(y)
-        grad = torch.autograd.grad(torch.sum(val_phi), y)[0]
+        grad = torch.autograd.grad(torch.sum(val_phi), y, 
+                                   retain_graph=True, create_graph=True)[0]
         return grad
         
     def grad_tilt(self, t, sig_params):
@@ -136,7 +147,7 @@ class PhiNN(nn.Module):
             results[i] = y        
         return results
 
-    def simulate_forward(self, x, dt=1e-3):
+    def simulate_forward(self, x, dt=1e-3, history=False):
         """Simulate all trajectories forward in time.
         Args:
             x : tensor of shape ???
@@ -153,14 +164,19 @@ class PhiNN(nn.Module):
         
         ts = torch.linspace(t0.item(), t1.item(), 1 + int((t1 - t0) / dt))
         y = y0
+        y_hist = []
         sigparams = torch.tensor([tcrit, *p0, *p1], dtype=torch.float32, 
                                  device=self.device)
+        if history:
+            y_hist.append(y0.detach().numpy())
         for i, t in enumerate(ts):
             dw = torch.normal(0, np.sqrt(dt), [self.ncells, self.ndim], device=self.device)
             if self.testing and (self.testing_dw is not None):
                 dw[:] = self.testing_dw
             y = self.step(t, y, sigparams, dt, dw)
-        return y
+            if history:
+                y_hist.append(y.detach().numpy())
+        return y if not history else (y, y_hist)
     
     def initialize_weights(self, testing=False, vals_phi=None, vals_tilt=None):
         if testing:
