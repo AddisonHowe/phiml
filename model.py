@@ -52,13 +52,15 @@ class PhiNN(nn.Module):
             )
         else:
             self.phi_nn = nn.Sequential(
-                nn.Linear(ndim, 64),
+                nn.Linear(ndim, 16),
                 activation1(),
-                nn.Linear(64, 64),
+                nn.Linear(16, 32),
                 activation1(),
-                # nn.Linear(64, 64),
-                # activation1(),
-                nn.Linear(64, 1),
+                nn.Linear(32, 32),
+                activation1(),
+                nn.Linear(32, 16),
+                activation1(),
+                nn.Linear(16, 1),
             )
 
         # Tilt Neural Network: Linear tilt values. Maps nsigs to ndims.
