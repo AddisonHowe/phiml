@@ -3,6 +3,8 @@
 
 import os
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import animation
 import torch
 from torch.utils.data import Dataset
 
@@ -50,6 +52,69 @@ class LandscapeSimulationDataset(Dataset):
         else:
             y = x1
         return x, y
+    
+    def preview(self, idx, **kwargs):
+        """Plot a data item."""
+        #~~~~~~~~~~~~  process kwargs  ~~~~~~~~~~~~#
+        ax = kwargs.get('ax', None)
+        col1 = kwargs.get('col1', 'b')
+        col2 = kwargs.get('col2', 'r')
+        size = kwargs.get('size', 2)
+        xlims = kwargs.get('xlims', None)
+        ylims = kwargs.get('ylims', None)
+        show = kwargs.get('show', True)
+        #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+        data = self.dataset[idx]
+        t0, x0, t1, x1, ps = data
+        if ax is None: fig, ax = plt.subplots(1, 1)
+        ax.plot(x0[:,0], x0[:,1], '.', 
+                c=col1, markersize=size, label=f"$t={t0:.3g}$")
+        ax.plot(x1[:,0], x1[:,1], '.', 
+                c=col2, markersize=size, label=f"$t={t1:.3g}$")
+        if xlims is not None: ax.set_xlim(*xlims)
+        if ylims is not None: ax.set_ylim(*ylims)
+        ax.set_xlabel(f"$x$")
+        ax.set_ylabel(f"$y$")
+        ax.set_title(f"datapoint {idx}/{len(self)}")
+        s = f"$t:{t0:.4g}\\to{t1:.4g}$\
+            \n$t^*={ps[0]:.3g}$\
+            \n$p_0=[{ps[1]:.3g}, {ps[2]:.3g}]$\
+            \n$p_1=[{ps[3]:.3g}, {ps[4]:.3g}]$"
+        ax.text(0.02, 0.02, s, fontsize=8, transform=ax.transAxes)
+        ax.legend()
+        if show: plt.show()
+        return ax
+
+    def animate(self, simidx, **kwargs):
+        """Animate a given simulation"""
+        idx0 = int(simidx * len(self) // self.nsims)
+        idx1 = idx0 + int(len(self) // self.nsims)
+        video = []
+        for idx in range(idx0, idx1):
+            ax = self.preview(idx, **kwargs)
+            ax.figure.canvas.draw()
+            data = np.frombuffer(ax.figure.canvas.tostring_rgb(), dtype=np.uint8)
+            data = data.reshape(ax.figure.canvas.get_width_height()[::-1] + (3,))
+            video.append(data)
+            plt.close()
+        video = np.array(video)
+
+        fig = plt.figure()
+        im = plt.imshow(video[0,:,:,:])
+        plt.close() 
+        def init():
+            im.set_data(video[0,:,:,:])
+
+        def ani_func(i):
+            im.set_data(video[i,:,:,:])
+            return im
+
+        anim = animation.FuncAnimation(
+            fig, ani_func, init_func=init, 
+            frames=video.shape[0],
+            interval=50
+        )
+        return anim.to_html5_video()
 
     ######################
     ##  Helper Methods  ##
