@@ -32,6 +32,12 @@ def mean_cov_loss(y_sim, y_obs):
     cov_err = torch.sum(torch.square(cov_sim - cov_obs), dim=[1,2])
     return torch.mean(mu_err + cov_err)
 
+def mean_diff_loss(y_sim, y_obs):
+    mu_sim = torch.mean(y_sim, dim=-2)
+    mu_obs = torch.mean(y_obs, dim=-2)
+    mu_err = torch.sum(torch.square(mu_sim - mu_obs), axis=1)
+    return torch.mean(mu_err)
+
 def batch_cov(batch_points):
     """
     Returns:

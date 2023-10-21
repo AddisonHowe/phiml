@@ -38,10 +38,10 @@ class PhiNN(nn.Module):
         self.device = device
 
         if self.device != 'cpu':
-            self.sigma = torch.tensor(sigma, dtype=torch.float32, device=device)
+            self.sigma = torch.tensor(sigma, dtype=torch.float64, device=device)
 
         # Potential Neural Network: Maps ndims to a scalar. 
-        activation1 = nn.Tanh
+        activation1 = nn.Tanh if testing else nn.Softplus
         if testing:
             self.phi_nn = nn.Sequential(
                 nn.Linear(ndim, 3, bias=False),
@@ -143,7 +143,7 @@ class PhiNN(nn.Module):
         return y + fval * dt + gval * dw
     
     def forward(self, x, dt=1e-3):
-        results = torch.zeros([len(x), self.ncells, self.ndim], dtype=torch.float32, device=self.device)
+        results = torch.zeros([len(x), self.ncells, self.ndim], dtype=torch.float64, device=self.device)
         for i in range(len(x)):
             y = self.simulate_forward(x[i], dt=dt)
             results[i] = y        
@@ -167,11 +167,11 @@ class PhiNN(nn.Module):
         ts = torch.linspace(t0.item(), t1.item(), 1 + int((t1 - t0) / dt))
         y = y0
         y_hist = []
-        sigparams = torch.tensor([tcrit, *p0, *p1], dtype=torch.float32, 
+        sigparams = torch.tensor([tcrit, *p0, *p1], dtype=torch.float64, 
                                  device=self.device)
         if history:
             y_hist.append(y0.detach().numpy())
-        for i, t in enumerate(ts):
+        for i, t in enumerate(ts[:-1]):
             dw = torch.normal(0, np.sqrt(dt), [self.ncells, self.ndim], device=self.device)
             if self.testing and (self.testing_dw is not None):
                 dw[:] = self.testing_dw
@@ -200,7 +200,7 @@ class PhiNN(nn.Module):
             count = 0
             for layer in self.phi_nn:
                 if isinstance(layer, nn.Linear):
-                    w = torch.tensor(vals_phi[count], dtype=torch.float32,
+                    w = torch.tensor(vals_phi[count], dtype=torch.float64,
                                      device=self.device)
                     layer.weight = torch.nn.Parameter(w)
                     count += 1
@@ -209,7 +209,7 @@ class PhiNN(nn.Module):
             count = 0
             for layer in self.tilt_nn:
                 if isinstance(layer, nn.Linear):
-                    w = torch.tensor(vals_tilt[count], dtype=torch.float32,
+                    w = torch.tensor(vals_tilt[count], dtype=torch.float64,
                                      device=self.device)
                     layer.weight = torch.nn.Parameter(w)
                     count += 1
