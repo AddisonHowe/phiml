@@ -47,7 +47,8 @@ def test_phi(ws, x, phi_exp):
         ndim=2, nsig=2, f_signal=None, 
         testing=True, include_bias=False, 
         init_weights=True,
-        init_weight_values_phi = ws
+        init_weight_values_phi = ws,
+        dtype=torch.float64,
     )
 
     x = torch.tensor(x, dtype=torch.float64)
@@ -65,7 +66,8 @@ def test_grad_phi(ws, x, grad_phi_exp):
         ndim=2, nsig=2, f_signal=None, 
         testing=True, include_bias=False, 
         init_weights=True,
-        init_weight_values_phi = ws
+        init_weight_values_phi = ws,
+        dtype=torch.float64,
     )
 
     x = torch.tensor(x, dtype=torch.float64, requires_grad=True)
@@ -97,7 +99,8 @@ def test_grad_tilt(wts, tcrit, p0, p1, t, grad_tilt_exp):
         ndim=2, nsig=2, f_signal=sigfunc, 
         testing=True, include_bias=False, 
         init_weights=True,
-        init_weight_values_tilt = wts
+        init_weight_values_tilt = wts,
+        dtype=torch.float64,
     )
     grad_tilt_act = model.grad_tilt(t, sigparams).detach().numpy()
     assert np.allclose(grad_tilt_act, grad_tilt_exp)
@@ -115,6 +118,7 @@ def test_f(ws, wts, tcrit, p0, p1, t, x, f_exp):
         init_weights=True,
         init_weight_values_phi = ws,
         init_weight_values_tilt = wts,
+        dtype=torch.float64,
     )
     x = torch.tensor(x, dtype=torch.float64, requires_grad=True)
     f_act = model.f(t, x, sigparams).detach().numpy()
@@ -141,6 +145,7 @@ def test_step(ws, wts, tcrit, p0, p1, t, dt, sigma, dw, x, x_exp):
         init_weights=True,
         init_weight_values_phi = ws,
         init_weight_values_tilt = wts,
+        dtype=torch.float64,
     )
     x = torch.tensor(x, dtype=torch.float64, requires_grad=True)
     dw = torch.tensor(dw, dtype=torch.float64)
@@ -169,6 +174,7 @@ def test_simulate_forward(ws, wts, tcrit, p0, p1, t, dt, tfin, sigma, dw, y):
         init_weight_values_phi = ws,
         init_weight_values_tilt = wts,
         testing_dw=torch.tensor(dw, dtype=torch.float64),
+        dtype=torch.float64,
     )
     y = np.array(y)
     x = np.concatenate([[t], [tfin], y.flatten(), [tcrit, *p0, *p1]])
@@ -253,6 +259,7 @@ class TestNoNoise:
             init_weight_values_phi = ws,
             init_weight_values_tilt = wts,
             testing_dw=torch.tensor(dw, dtype=torch.float64),
+            dtype=torch.float64,
         )
         y0 = np.array(y0)
         yfin_exp = np.array(yfin_exp)[None,:]
@@ -276,6 +283,7 @@ class TestNoNoise:
             init_weight_values_phi = ws,
             init_weight_values_tilt = wts,
             testing_dw=torch.tensor(dw, dtype=torch.float64),
+            dtype=torch.float64,
         )
         y0 = np.array(y0)
         x = np.concatenate([[t0], [tfin], y0.flatten(), [tcrit, *p0, *p1]])[None,:]
@@ -308,6 +316,7 @@ class TestNoNoise:
             init_weight_values_phi = ws,
             init_weight_values_tilt = wts,
             testing_dw=torch.tensor(dw, dtype=torch.float64),
+            dtype=torch.float64,
         )
         y0 = np.array(y0)
         x = np.concatenate([[t0], [tfin], y0.flatten(), [tcrit, *p0, *p1]])[None,:]
@@ -346,6 +355,7 @@ class TestNoNoise:
             init_weight_values_phi = ws,
             init_weight_values_tilt = wts,
             testing_dw=torch.tensor(dw, dtype=torch.float64),
+            dtype=torch.float64,
         )
         y0 = np.array(y0)
         x = np.concatenate([[t0], [tfin], y0.flatten(), [tcrit, *p0, *p1]])[None,:]

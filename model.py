@@ -27,6 +27,7 @@ class PhiNN(nn.Module):
         self.testing_dw = kwargs.get('testing_dw', None)
         ncells = kwargs.get('ncells', 100)
         device = kwargs.get('device', 'cpu')
+        dtype = kwargs.get('dtype', torch.float32)
         #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
         
         self.ndim = ndim
@@ -36,9 +37,10 @@ class PhiNN(nn.Module):
         self.ncells = ncells
         self.testing = testing
         self.device = device
+        self.dtype = dtype
 
         if self.device != 'cpu':
-            self.sigma = torch.tensor(sigma, dtype=torch.float64, device=device)
+            self.sigma = torch.tensor(sigma, dtype=self.dtype, device=device)
 
         # Potential Neural Network: Maps ndims to a scalar. 
         activation1 = nn.Tanh if testing else nn.Softplus
@@ -53,12 +55,16 @@ class PhiNN(nn.Module):
         else:
             self.phi_nn = nn.Sequential(
                 nn.Linear(ndim, 16),
+                # nn.BatchNorm1d(16),
                 activation1(),
                 nn.Linear(16, 32),
+                # nn.BatchNorm1d(16),
                 activation1(),
                 nn.Linear(32, 32),
+                # nn.BatchNorm1d(16),
                 activation1(),
                 nn.Linear(32, 16),
+                # nn.BatchNorm1d(16),
                 activation1(),
                 nn.Linear(16, 1),
             )
@@ -111,8 +117,7 @@ class PhiNN(nn.Module):
             tensor of shape (ndim,)
         """
         val_phi = self.phi_nn(y)
-        grad = torch.autograd.grad(torch.sum(val_phi), y, 
-                                   retain_graph=True, create_graph=True)[0]
+        grad = torch.autograd.grad(torch.sum(val_phi), y, create_graph=True)[0]
         return grad
         
     def grad_tilt(self, t, sig_params):
@@ -143,7 +148,7 @@ class PhiNN(nn.Module):
         return y + fval * dt + gval * dw
     
     def forward(self, x, dt=1e-3):
-        results = torch.zeros([len(x), self.ncells, self.ndim], dtype=torch.float64, device=self.device)
+        results = torch.zeros([len(x), self.ncells, self.ndim], dtype=self.dtype, device=self.device)
         for i in range(len(x)):
             y = self.simulate_forward(x[i], dt=dt)
             results[i] = y        
@@ -167,12 +172,13 @@ class PhiNN(nn.Module):
         ts = torch.linspace(t0.item(), t1.item(), 1 + int((t1 - t0) / dt))
         y = y0
         y_hist = []
-        sigparams = torch.tensor([tcrit, *p0, *p1], dtype=torch.float64, 
+        sigparams = torch.tensor([tcrit, *p0, *p1], dtype=self.dtype, 
                                  device=self.device)
         if history:
             y_hist.append(y0.detach().numpy())
         for i, t in enumerate(ts[:-1]):
-            dw = torch.normal(0, np.sqrt(dt), [self.ncells, self.ndim], device=self.device)
+            dw = torch.normal(0, np.sqrt(dt), [self.ncells, self.ndim], 
+                              device=self.device, dtype=self.dtype)
             if self.testing and (self.testing_dw is not None):
                 dw[:] = self.testing_dw
             y = self.step(t, y, sigparams, dt, dw)
@@ -200,7 +206,7 @@ class PhiNN(nn.Module):
             count = 0
             for layer in self.phi_nn:
                 if isinstance(layer, nn.Linear):
-                    w = torch.tensor(vals_phi[count], dtype=torch.float64,
+                    w = torch.tensor(vals_phi[count], dtype=self.dtype,
                                      device=self.device)
                     layer.weight = torch.nn.Parameter(w)
                     count += 1
@@ -209,7 +215,7 @@ class PhiNN(nn.Module):
             count = 0
             for layer in self.tilt_nn:
                 if isinstance(layer, nn.Linear):
-                    w = torch.tensor(vals_tilt[count], dtype=torch.float64,
+                    w = torch.tensor(vals_tilt[count], dtype=self.dtype,
                                      device=self.device)
                     layer.weight = torch.nn.Parameter(w)
                     count += 1

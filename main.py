@@ -15,10 +15,13 @@ from helpers import select_device, jump_function, mean_cov_loss
 from datetime import datetime
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-o', '--outdir', type=str, default="out/model_training")
+parser.add_argument('-o', '--outdir', type=str, 
+                    default="out/model_training")
 parser.add_argument('--name', type=str, default="model")
-parser.add_argument('-t', '--training_data', type=str, default="data/model_training_data")
-parser.add_argument('-v', '--validation_data', type=str, default="data/model_validation_data")
+parser.add_argument('-t', '--training_data', type=str, 
+                    default="data/model_training_data")
+parser.add_argument('-v', '--validation_data', type=str, 
+                    default="data/model_validation_data")
 parser.add_argument('-nt', '--nsims_training', type=int, default=100)
 parser.add_argument('-nv', '--nsims_validation', type=int, default=30)
 parser.add_argument('-nd', '--ndims', type=int, default=2)
@@ -32,6 +35,8 @@ parser.add_argument('-e', '--num_epochs', type=int, default=50)
 parser.add_argument('-b', '--batch_size', type=int, default=32)
 parser.add_argument('--learning_rate', type=float, default=1e-3)
 parser.add_argument('--momentum', type=float, default=0.9)
+parser.add_argument('--dtype', type=str, default="float32", 
+                    choices=['float32', 'float64'])
 
 parser.add_argument('--seed', type=int, default=0)
 args = parser.parse_args()
@@ -53,6 +58,7 @@ num_epochs = args.num_epochs
 learning_rate = args.learning_rate
 momentum = args.momentum
 seed = args.seed
+dtype = torch.float32 if args.dtype == 'float32' else torch.float64
 
 time0 = time.time()
 
@@ -65,13 +71,15 @@ torch.manual_seed(int(rng.integers(100000, 2**32)))
 train_dataset = LandscapeSimulationDataset(
     datdir_train, nsims_train, ndims, 
     transform='tensor', 
-    target_transform='tensor'
+    target_transform='tensor',
+    dtype=dtype,
 )
 
 validation_dataset = LandscapeSimulationDataset(
     datdir_valid, nsims_valid, ndims, 
     transform='tensor', 
-    target_transform='tensor'
+    target_transform='tensor',
+    dtype=dtype,
 )
 
 train_dataloader = DataLoader(train_dataset, 
@@ -89,6 +97,7 @@ model = PhiNN(
     ncells=ncells, 
     sigma=sigma,
     device=device,
+    dtype=dtype,
 ).to(device)
 
 outdir = "out/model_training"
@@ -123,8 +132,7 @@ def train_one_epoch(epoch_index):
             last_loss = running_loss / batch_size  # loss per batch
             print('  batch {} loss: {}'.format(i + 1, last_loss))
             running_loss = 0.
-            sys.stdout.flush()
-
+            sys.stdout.flush()    
     return last_loss
 
 #####################
@@ -137,6 +145,8 @@ timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 best_vloss = 1_000_000
 for epoch in range(num_epochs):
     print(f'EPOCH {epoch + 1}:', flush=True)
+    etime0 = time.time()
+    
     # Make sure gradient tracking is on, and do a pass over the data
     model.train(True)
     avg_loss = train_one_epoch(epoch)
@@ -151,12 +161,14 @@ for epoch in range(num_epochs):
         running_vloss += vloss
     
     avg_vloss = running_vloss / (i + 1)
-    print('LOSS train {} valid {}'.format(avg_loss, avg_vloss))
+    print("LOSS [train: {}] [valid: {}] TIME [epoch: {:.3g} sec]".format(
+        avg_loss, avg_vloss, time.time() - etime0), flush=True)
 
     # Track best performance, and save the model's state
     if avg_vloss < best_vloss:
         best_vloss = avg_vloss
         model_path = f"{outdir}/{modelname}_{timestamp}_{epoch}"
+        print("Saving model.")
         torch.save(model.state_dict(), model_path)
 
 time1 = time.time()

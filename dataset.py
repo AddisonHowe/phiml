@@ -23,11 +23,13 @@ class LandscapeSimulationDataset(Dataset):
                  transform=None, target_transform=None, **kwargs):
         #~~~~~~~~~~~~  process kwargs  ~~~~~~~~~~~~#
         simprefix = kwargs.get('simprefix', 'sim')
+        dtype = kwargs.get('dtype', torch.float32)
         #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
         self.nsims = nsims
         self.dim = dim
         self.transform = transform
         self.target_transform = target_transform
+        self.dtype = dtype
         self._load_data(datdir, nsims, simprefix=simprefix)
 
     def __len__(self):
@@ -39,14 +41,14 @@ class LandscapeSimulationDataset(Dataset):
         # Transform input x
         if self.transform == 'tensor':
             x = np.concatenate([[t0], [t1], x0.flatten(), ps])
-            x = torch.tensor(x, dtype=torch.float32, requires_grad=True)
+            x = torch.tensor(x, dtype=self.dtype, requires_grad=True)
         elif self.transform:
             x = self.transform(*data)
         else:
             x = t0, x0, t1, ps
         # Transform target y, the final distribution
         if self.target_transform == 'tensor':
-            y = torch.tensor(x1, dtype=torch.float32)
+            y = torch.tensor(x1, dtype=self.dtype)
         elif self.target_transform:
             y = self.target_transform(*data)
         else:
