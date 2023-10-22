@@ -151,6 +151,9 @@ for epoch in range(num_epochs):
     model.train(True)
     avg_loss = train_one_epoch(epoch)
 
+    # Empty cache
+    torch.cuda.empty_cache()
+
     running_vloss = 0.0
     model.eval()
 
@@ -170,6 +173,6 @@ for epoch in range(num_epochs):
         model_path = f"{outdir}/{modelname}_{timestamp}_{epoch}"
         print("Saving model.")
         torch.save(model.state_dict(), model_path)
-
+    
 time1 = time.time()
 print(f"Finished in {time1-time0:.3f} seconds.")
