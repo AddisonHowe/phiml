@@ -375,5 +375,5 @@ class TestNoNoise:
                 msg = f"Mismatch for grad W{i}."
                 msg += f"Expected:\n{pgrad_exp}\nGot:\n{pgrad}"
                 errors.append(msg)
-        assert not errors, "Errors occured:\n{'\n'.join(errors)}"
+        assert not errors, "Errors occurred:\n{}".format('\n'.join(errors))
                 

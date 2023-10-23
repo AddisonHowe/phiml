@@ -169,7 +169,9 @@ class PhiNN(nn.Module):
         p0 = ps[1:3]
         p1 = ps[3:5]
         
-        ts = torch.linspace(t0.item(), t1.item(), 1 + int((t1 - t0) / dt))
+        ts = torch.linspace(t0.item(), t1.item(), 
+                            1+round((t1.item() - t0.item()) / dt), 
+                            dtype=self.dtype)
         y = y0
         y_hist = []
         sigparams = torch.tensor([tcrit, *p0, *p1], dtype=self.dtype, 
