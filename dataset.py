@@ -139,7 +139,7 @@ class LandscapeSimulationDataset(Dataset):
             ps_all.append(ps)
             self._add_sim_data_to_dataset(dataset, ts=ts, xs=xs, ps=ps, 
                                           p_params=p_params)
-        self.dataset = dataset
+        self.dataset = np.array(dataset, dtype=object)
         self.ts_all = ts_all
         self.xs_all = xs_all
         self.ps_all = ps_all
