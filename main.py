@@ -63,8 +63,6 @@ def train_one_epoch(epoch_idx, model, dt, loss_fn, optimizer,
         x1_pred = model(input.to(device), dt=dt)
 
         # Compute loss and its gradients
-        print(f"x1 (pred):\n{x1_pred.detach().numpy()}")
-        print(f"x1 (data):\n{x1.detach().numpy()}")
         loss = loss_fn(x1_pred, x1.to(device))
         loss.backward()
 

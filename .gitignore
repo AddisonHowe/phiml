@@ -4,6 +4,7 @@ out/
 logs/
 jobs/
 scripts/
+tests/simtest1/tmp_out/*
 **/.DS_Store
 
 # Byte-compiled / optimized / DLL files
