@@ -1,18 +1,17 @@
-"""
+"""Main script.
 
 """
 
-import os, sys, time
+import os, sys
 import argparse
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from dataset import LandscapeSimulationDataset
 from model import PhiNN
+from model_training import train_model
 from helpers import select_device, jump_function, mean_cov_loss
 
-# from torch.utils.tensorboard import SummaryWriter
-from datetime import datetime
 
 def parse_args(args):
     parser = argparse.ArgumentParser()
@@ -42,98 +41,6 @@ def parse_args(args):
 
     parser.add_argument('--seed', type=int, default=0)
     return parser.parse_args(args)
-
-
-def train_one_epoch(epoch_idx, model, dt, loss_fn, optimizer,
-                    dataloader, **kwargs):
-    #~~~~~~~~~~~~  process kwargs  ~~~~~~~~~~~~#
-    batch_size = kwargs.get('batch_size', 1)
-    device = kwargs.get('device', 'cpu')
-    verbosity = kwargs.get('verbosity', 1)
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-    running_loss = 0.
-    last_loss = 0.
-    for i, data in enumerate(dataloader):
-        input, x1 = data
-
-        # Zero gradients for the batch
-        optimizer.zero_grad()
-
-        # Evolve forward to get predicted state
-        x1_pred = model(input.to(device), dt=dt)
-
-        # Compute loss and its gradients
-        loss = loss_fn(x1_pred, x1.to(device))
-        loss.backward()
-
-        # Adjust learning weights
-        optimizer.step()
-
-        # Gather data and report
-        running_loss += loss.item()
-        if i % batch_size == (batch_size-1):
-            last_loss = running_loss / batch_size  # loss per batch
-            print('  batch {} loss: {}'.format(i + 1, last_loss))
-            running_loss = 0.
-            sys.stdout.flush()    
-    return last_loss
-
-#####################
-##  Training Loop  ##
-#####################
-
-def train_model(model, dt, loss_fn, optimizer, 
-                train_dataloader, validation_dataloader, **kwargs):
-    #~~~~~~~~~~~~  process kwargs  ~~~~~~~~~~~~#
-    num_epochs = kwargs.get('num_epochs', 50)
-    batch_size = kwargs.get('batch_size', 1)
-    device = kwargs.get('device', 'cpu')
-    model_name = kwargs.get('model_name', 'model')
-    outdir = kwargs.get('outdir', 'out')
-    verbosity = kwargs.get('verbosity', 1)
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    time0 = time.time()
-
-    best_vloss = 1_000_000
-    for epoch in range(num_epochs):
-        print(f'EPOCH {epoch + 1}:', flush=True)
-        etime0 = time.time()
-        
-        # Make sure gradient tracking is on, and do a pass over the data
-        model.train(True)
-        avg_loss = train_one_epoch(
-            epoch, model, dt, loss_fn, optimizer, 
-            train_dataloader,
-            batch_size=batch_size,
-            device=device,
-        )
-
-        # Empty cache
-        torch.cuda.empty_cache()
-
-        running_vloss = 0.0
-        model.eval()
-
-        for i, vdata in enumerate(validation_dataloader):
-            vinputs, vx1 = vdata
-            voutputs = model(vinputs.to(device), dt=dt)
-            vloss = loss_fn(voutputs, vx1.to(device))
-            running_vloss += vloss
-        
-        avg_vloss = running_vloss / (i + 1)
-        print("LOSS [train: {}] [valid: {}] TIME [epoch: {:.3g} sec]".format(
-            avg_loss, avg_vloss, time.time() - etime0), flush=True)
-
-        # Track best performance, and save the model's state
-        if avg_vloss < best_vloss:
-            best_vloss = avg_vloss
-            model_path = f"{outdir}/{model_name}_{timestamp}_{epoch}"
-            print("Saving model.")
-            torch.save(model.state_dict(), model_path)
-        
-    time1 = time.time()
-    print(f"Finished in {time1-time0:.3f} seconds.")
 
 
 def main(args):
@@ -221,6 +128,5 @@ def main(args):
 
 
 if __name__ == "__main__":
-    print("NAMEEM")
     args = parse_args(sys.argv[1:])
     main(args)
