@@ -176,11 +176,23 @@ def test_simulate_forward(ws, wts, tcrit, p0, p1, t, dt, tfin, sigma, dw, y):
         testing_dw=torch.tensor(dw, dtype=torch.float64),
         dtype=torch.float64,
     )
-    y = np.array(y)
-    x = np.concatenate([[t], [tfin], y.flatten(), [tcrit, *p0, *p1]])
-    x = torch.tensor(x, dtype=torch.float64, requires_grad=True)
-    y_act = model.simulate_forward(x, dt=dt).detach().numpy()
-    assert y_act.shape == (ncells, 2)
+    # y = np.array(y)
+    # x = np.concatenate([[t], [tfin], y.flatten(), [tcrit, *p0, *p1]])
+    # x = torch.tensor(x, dtype=torch.float64, requires_grad=True)
+    # y_act = model.simulate_forward(x, dt=dt).detach().numpy()
+
+    y = np.array([y])
+    sigparams = np.array([[tcrit, *p0, *p1]])
+    # x = np.concatenate([[t], [tfin], y.flatten(), [tcrit, *p0, *p1]])
+    # x = torch.tensor(x, dtype=torch.float64, requires_grad=True)
+    t0 = torch.tensor([t], dtype=torch.float64)
+    t1 = torch.tensor([tfin], dtype=torch.float64)
+    y0 = torch.tensor(y, dtype=torch.float64)
+    y0.requires_grad_()
+    sigparams = torch.tensor(sigparams, dtype=torch.float64)
+    y_act = model.simulate_forward(t0, t1, y0, sigparams, dt=dt).detach().numpy()
+
+    assert y_act.shape == (1, ncells, 2)
     
 
 @pytest.mark.parametrize('y_sim, y_obs, loss_exp', [

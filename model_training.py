@@ -116,4 +116,7 @@ def train_one_epoch(epoch_idx, model, dt, loss_fn, optimizer,
             print('  batch {} loss: {}'.format(i + 1, last_loss))
             running_loss = 0.
             sys.stdout.flush()    
+
+        del x1_pred
+
     return last_loss

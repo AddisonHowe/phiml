@@ -5,6 +5,7 @@
 import numpy as np
 import torch
 from torch import nn
+from torch.autograd.functional import jacobian as jacobian
 
 class PhiNN(nn.Module):
     
@@ -116,8 +117,9 @@ class PhiNN(nn.Module):
         Returns:
             tensor of shape (ndim,)
         """
-        val_phi = self.phi_nn(y)
-        grad = torch.autograd.grad(torch.sum(val_phi), y, create_graph=True)[0]
+        # val_phi = self.phi_nn(y)
+        # grad = torch.autograd.grad(torch.sum(val_phi), y, create_graph=True)[0]
+        grad = jacobian(self.phi_nn, y, create_graph=True).sum(axis=(0,1))
         return grad
         
     def grad_tilt(self, t, sig_params):
@@ -148,34 +150,44 @@ class PhiNN(nn.Module):
         return y + fval * dt + gval * dw
     
     def forward(self, x, dt=1e-3):
-        results = torch.zeros([len(x), self.ncells, self.ndim], dtype=self.dtype, device=self.device)
+        t0 = x[:,0]
+        t1 = x[:,1]
+        y0 = x[:,2:2+self.ndim*self.ncells].view([-1, self.ncells, self.ndim])
+        sigparams = x[:,2+self.ndim*self.ncells:]
+        y0.requires_grad_()
+
+        results = torch.zeros([len(x), self.ncells, self.ndim], 
+                              dtype=self.dtype, device=self.device)
+        
         for i in range(len(x)):
-            y = self.simulate_forward(x[i], dt=dt)
-            results[i] = y        
+            # y = self.simulate_forward(x[i], dt=dt)
+            y = self.simulate_forward(t0[i], t1[i], y0[i], sigparams[i], dt=dt)
+            results[i] = y
         return results
 
-    def simulate_forward(self, x, dt=1e-3, history=False):
+    def simulate_forward(self, t0, t1, y0, sigparams, 
+                         dt=1e-3, history=False):
         """Simulate all trajectories forward in time.
         Args:
             x : tensor of shape ???
         Returns:
             ...
         """
-        t0 = x[0]
-        t1 = x[1]
-        y0 = x[2:2+self.ndim*self.ncells].view([self.ncells, self.ndim])
-        ps = x[2+self.ndim*self.ncells:]
-        tcrit = ps[0]
-        p0 = ps[1:3]
-        p1 = ps[3:5]
-        
+        # t0 = x[0]
+        # t1 = x[1]
+        # y0 = x[2:2+self.ndim*self.ncells].view([self.ncells, self.ndim])
+        # ps = x[2+self.ndim*self.ncells:]
+        # tcrit = ps[0]
+        # p0 = ps[1:3]
+        # p1 = ps[3:5]
+                
         ts = torch.linspace(t0.item(), t1.item(), 
                             1+round((t1.item() - t0.item()) / dt), 
                             dtype=self.dtype)
         y = y0
         y_hist = []
-        sigparams = torch.tensor([tcrit, *p0, *p1], dtype=self.dtype, 
-                                 device=self.device)
+        # sigparams = torch.tensor([tcrit, *p0, *p1], 
+        #                          dtype=self.dtype, device=self.device)
         if history:
             y_hist.append(y0.detach().numpy())
         for i, t in enumerate(ts[:-1]):

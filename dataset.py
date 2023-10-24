@@ -41,7 +41,8 @@ class LandscapeSimulationDataset(Dataset):
         # Transform input x
         if self.transform == 'tensor':
             x = np.concatenate([[t0], [t1], x0.flatten(), ps])
-            x = torch.tensor(x, dtype=self.dtype, requires_grad=True)
+            # x = torch.tensor(x, dtype=self.dtype, requires_grad=True)
+            x = torch.tensor(x, dtype=self.dtype)
         elif self.transform:
             x = self.transform(*data)
         else:
