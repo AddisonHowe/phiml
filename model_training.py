@@ -57,7 +57,6 @@ def train_model(model, dt, loss_fn, optimizer,
             voutputs = model(vinputs.to(device), dt=dt)
             vloss = loss_fn(voutputs, vx1.to(device))
             running_vloss += vloss.item()
-            print(type(running_vloss))
             if verbosity >  1: disp_mem_usage(f"VALIDATION {i}")
         
         avg_vloss = running_vloss / (i + 1)
