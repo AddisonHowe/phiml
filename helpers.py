@@ -49,3 +49,8 @@ def batch_cov(batch_points):
     prods = torch.bmm(diffs.unsqueeze(2), diffs.unsqueeze(1)).reshape(b,n,d,d)
     bcov = prods.sum(dim=1) / (n - 1)  # unbiased estimate
     return bcov
+
+def disp_mem_usage(msg=""):
+    memalloc = torch.cuda.memory_allocated()
+    maxmemalloc =torch.cuda.max_memory_allocated()
+    print(f"[{msg}] mem: {memalloc}  \t  max: {maxmemalloc}", flush=True)

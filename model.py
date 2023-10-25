@@ -117,9 +117,9 @@ class PhiNN(nn.Module):
         Returns:
             tensor of shape (ndim,)
         """
-        # val_phi = self.phi_nn(y)
-        # grad = torch.autograd.grad(torch.sum(val_phi), y, create_graph=True)[0]
-        grad = jacobian(self.phi_nn, y, create_graph=True).sum(axis=(0,1))
+        val_phi = self.phi_nn(y)
+        grad = torch.autograd.grad(torch.sum(val_phi), y, create_graph=True)[0]
+        # grad = jacobian(self.phi_nn, y, create_graph=True).sum(axis=(0,1))
         return grad
         
     def grad_tilt(self, t, sig_params):

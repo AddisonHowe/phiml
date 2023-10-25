@@ -5,6 +5,7 @@
 import sys, time
 import torch
 from datetime import datetime
+from helpers import disp_mem_usage
 
 
 def train_model(model, dt, loss_fn, optimizer, 
@@ -37,13 +38,14 @@ def train_model(model, dt, loss_fn, optimizer,
         
         # Make sure gradient tracking is on, and do a pass over the data
         model.train(True)
+        if verbosity >  1: disp_mem_usage("PRE TRAIN")
         avg_loss = train_one_epoch(
             epoch, model, dt, loss_fn, optimizer, 
             train_dataloader,
             batch_size=batch_size,
             device=device,
         )
-
+        if verbosity >  1: disp_mem_usage("POST TRAIN")
         # Empty cache
         # torch.cuda.empty_cache()
 
@@ -54,7 +56,9 @@ def train_model(model, dt, loss_fn, optimizer,
             vinputs, vx1 = vdata
             voutputs = model(vinputs.to(device), dt=dt)
             vloss = loss_fn(voutputs, vx1.to(device))
-            running_vloss += vloss
+            running_vloss += vloss.item()
+            print(type(running_vloss))
+            if verbosity >  1: disp_mem_usage(f"VALIDATION {i}")
         
         avg_vloss = running_vloss / (i + 1)
         print("LOSS [train: {}] [valid: {}] TIME [epoch: {:.3g} sec]".format(
@@ -95,19 +99,25 @@ def train_one_epoch(epoch_idx, model, dt, loss_fn, optimizer,
     last_loss = 0.
     for i, data in enumerate(dataloader):
         input, x1 = data
+        if verbosity >  1: disp_mem_usage('a')
 
         # Zero gradients for the batch
         optimizer.zero_grad()
+        if verbosity >  1: disp_mem_usage('b')
 
         # Evolve forward to get predicted state
         x1_pred = model(input.to(device), dt=dt)
+        if verbosity >  1: disp_mem_usage('c')
 
         # Compute loss and its gradients
         loss = loss_fn(x1_pred, x1.to(device))
+        if verbosity >  1: disp_mem_usage('d')
         loss.backward()
+        if verbosity >  1: disp_mem_usage('e')
 
         # Adjust learning weights
         optimizer.step()
+        if verbosity >  1: disp_mem_usage('f')
 
         # Gather data and report
         running_loss += loss.item()
