@@ -42,7 +42,8 @@ WT1 = np.array([
     [[W1, W2, W3], [[1, 0]], [2.69506]],
     [[W1, W2, W3], [[1, 1]], [3.24787]],
 ])
-def test_phi(ws, x, phi_exp):
+@pytest.mark.parametrize("eval_mode", [True, False])
+def test_phi(ws, x, phi_exp, eval_mode):
     model = PhiNN(
         ndim=2, nsig=2, f_signal=None, 
         testing=True, include_bias=False, 
@@ -50,6 +51,7 @@ def test_phi(ws, x, phi_exp):
         init_weight_values_phi = ws,
         dtype=torch.float64,
     )
+    if eval_mode: model.eval()
 
     x = torch.tensor(x, dtype=torch.float64)
     phi_act = model.phi(x).detach().numpy()
@@ -76,7 +78,8 @@ def test_phi(ws, x, phi_exp):
       [[1.11945, 2.71635], [-3.5586, -0.83997]],
       [[1.11945, 2.71635], [-3.5586, -0.83997]]], (3, 2, 2)],
 ])
-def test_grad_phi(ws, x, grad_phi_exp, shape_exp):
+@pytest.mark.parametrize("eval_mode", [True, False])
+def test_grad_phi(ws, x, grad_phi_exp, shape_exp, eval_mode):
     model = PhiNN(
         ndim=2, nsig=2, f_signal=None, 
         testing=True, include_bias=False, 
@@ -84,6 +87,7 @@ def test_grad_phi(ws, x, grad_phi_exp, shape_exp):
         init_weight_values_phi = ws,
         dtype=torch.float64,
     )
+    if eval_mode: model.eval()
 
     x = torch.tensor(x, dtype=torch.float64, requires_grad=True)
     grad_phi_act = model.grad_phi(0, x).detach().numpy()
@@ -124,7 +128,8 @@ def test_binary_signal_function(tcrit, p0, p1, t, signal_exp):
      [[4, 1], [-2, -2], [-2, -2]], 
      (3, 2)],
 ])
-def test_grad_tilt(wts, sigparams, t, grad_tilt_exp, shape_exp):
+@pytest.mark.parametrize("eval_mode", [True, False])
+def test_grad_tilt(wts, sigparams, t, grad_tilt_exp, shape_exp, eval_mode):
     sigparams = torch.tensor(sigparams, dtype=torch.float64)
     sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
     model = PhiNN(
@@ -134,6 +139,7 @@ def test_grad_tilt(wts, sigparams, t, grad_tilt_exp, shape_exp):
         init_weight_values_tilt = wts,
         dtype=torch.float64,
     )
+    if eval_mode: model.eval()
     ts = torch.tensor(t, dtype=torch.float64)
     grad_tilt_act = model.grad_tilt(ts, sigparams).detach().numpy()
 
@@ -165,7 +171,8 @@ def test_grad_tilt(wts, sigparams, t, grad_tilt_exp, shape_exp):
      [[[-0.441403, -0.16003]], [[5.5586, 2.83997]]]
     ],
 ])
-def test_f(ws, wts, sigparams, t, x, f_exp):
+@pytest.mark.parametrize("eval_mode", [True, False])
+def test_f(ws, wts, sigparams, t, x, f_exp, eval_mode):
     sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
     model = PhiNN(
         ndim=2, nsig=2, f_signal=sigfunc, 
@@ -175,6 +182,7 @@ def test_f(ws, wts, sigparams, t, x, f_exp):
         init_weight_values_tilt = wts,
         dtype=torch.float64,
     )
+    if eval_mode: model.eval()
     sigparams = torch.tensor(sigparams, dtype=torch.float64)
     t = torch.tensor(t, dtype=torch.float64)
     x = torch.tensor(x, dtype=torch.float64, requires_grad=True)
@@ -193,7 +201,8 @@ def test_f(ws, wts, sigparams, t, x, f_exp):
      [[0, 1], [0, 1]], [[-0.00436403, 0.9983757], [-0.00436403, 0.9983757]]
     ],
 ])
-def test_step(ws, wts, tcrit, p0, p1, t, dt, sigma, dw, x, x_exp):
+@pytest.mark.parametrize("eval_mode", [True, False])
+def test_step(ws, wts, tcrit, p0, p1, t, dt, sigma, dw, x, x_exp, eval_mode):
     sigparams = torch.tensor([[tcrit, *p0, *p1]], dtype=torch.float64)
     sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
     model = PhiNN(
@@ -204,6 +213,7 @@ def test_step(ws, wts, tcrit, p0, p1, t, dt, sigma, dw, x, x_exp):
         init_weight_values_tilt = wts,
         dtype=torch.float64,
     )
+    if eval_mode: model.eval()
     t = torch.tensor([t], dtype=torch.float64)
     x = torch.tensor([x], dtype=torch.float64, requires_grad=True)
     dw = torch.tensor([dw], dtype=torch.float64)
@@ -222,7 +232,9 @@ def test_step(ws, wts, tcrit, p0, p1, t, dt, sigma, dw, x, x_exp):
      1e-3, [[[0.05, -0.024],[0.05, -0.024]]], [[[0, 1], [0, 1]]], (1,2,2)
     ],
 ])
-def test_simulate_forward(ws, wts, sigparams, t, dt, tfin, sigma, dw, y, shape_exp):
+@pytest.mark.parametrize("eval_mode", [True, False])
+def test_simulate_forward(ws, wts, sigparams, t, dt, tfin, sigma, 
+                          dw, y, shape_exp, eval_mode):
     ncells = len(y)
     sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
     model = PhiNN(
@@ -234,15 +246,10 @@ def test_simulate_forward(ws, wts, sigparams, t, dt, tfin, sigma, dw, y, shape_e
         testing_dw=torch.tensor(dw, dtype=torch.float64),
         dtype=torch.float64,
     )
-    # y = np.array(y)
-    # x = np.concatenate([[t], [tfin], y.flatten(), [tcrit, *p0, *p1]])
-    # x = torch.tensor(x, dtype=torch.float64, requires_grad=True)
-    # y_act = model.simulate_forward(x, dt=dt).detach().numpy()
+    if eval_mode: model.eval()
 
     y = np.array(y)
     sigparams = np.array(sigparams)
-    # x = np.concatenate([[t], [tfin], y.flatten(), [tcrit, *p0, *p1]])
-    # x = torch.tensor(x, dtype=torch.float64, requires_grad=True)
     t0 = torch.tensor(t, dtype=torch.float64)
     t1 = torch.tensor(tfin, dtype=torch.float64)
     y0 = torch.tensor(y, dtype=torch.float64)
@@ -363,9 +370,7 @@ class TestNoNoise:
             yfin_act, torch.tensor(y1, dtype=torch.float64)
         ).detach().numpy()
         mu_exp = np.mean(yfin_exp, 1)
-        print(mu_exp)
         cov_exp = np.array([np.cov(np.array(yf).T) for yf in yfin_exp])
-        print(cov_exp)
         mu_loss = np.array([np.sum(np.square(mu_exp - np.mean(y))) for y in y1])
         cov_loss = np.array([np.sum(np.square(cov_exp - np.cov(np.array(y).T))) for y in y1])
         loss_exp = mu_loss + cov_loss
@@ -392,7 +397,6 @@ class TestNoNoise:
             yfin_act, torch.tensor(y1, dtype=torch.float64)
         ).detach().numpy()
         mu_exp = np.mean(yfin_exp, 1)
-        print(mu_exp)
         loss_exp = np.sum(np.square(mu_exp - np.mean(y1, 1)))
         assert np.allclose(loss_exp, loss_act), \
             f"Expected:\n {loss_exp}\nGot:\n{loss_act}"
@@ -440,4 +444,4 @@ class TestNoNoise:
                 msg += f"Expected:\n{pgrad_exp}\nGot:\n{pgrad}"
                 errors.append(msg)
         assert not errors, "Errors occurred:\n{}".format('\n'.join(errors))
-                
+        

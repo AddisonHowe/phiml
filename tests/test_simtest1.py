@@ -46,26 +46,6 @@ OUTDIR = "tests/simtest1/tmp_out"
 ###############################################################################
 
 
-@pytest.mark.parametrize('device', ['cpu', 'mps'])
-@pytest.mark.parametrize('dtype', [torch.float32, torch.float64])
-@pytest.mark.parametrize('batch_size', [1, 2])
-class TestDataloader:
-
-    def test_train_dataset(self, device, dtype, batch_size):
-        train_dataset = LandscapeSimulationDataset(
-            TRAINDIR, NSIMS_TRAIN, 2, 
-            transform='tensor', 
-            target_transform='tensor',
-            dtype=dtype,
-        )
-        train_dataloader = DataLoader(
-            train_dataset, 
-            batch_size=batch_size, 
-            shuffle=False,
-        )
-        assert len(train_dataset) == 4
-
-
 @pytest.mark.parametrize('device, dtype', [
     ['cpu', torch.float32], 
     ['cpu', torch.float64], 

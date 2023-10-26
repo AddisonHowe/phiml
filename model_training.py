@@ -3,6 +3,7 @@
 """
 
 import sys, time
+import numpy as np
 import torch
 from datetime import datetime
 
@@ -31,34 +32,35 @@ def train_model(model, dt, loss_fn, optimizer,
     time0 = time.time()
 
     best_vloss = 1_000_000
+    loss_hist_train = []
+    loss_hist_valid = []
     for epoch in range(num_epochs):
         print(f'EPOCH {epoch + 1}:', flush=True)
         etime0 = time.time()
         
         # Make sure gradient tracking is on, and do a pass over the data
         model.train(True)
-        avg_loss = train_one_epoch(
+        avg_tloss = train_one_epoch(
             epoch, model, dt, loss_fn, optimizer, 
             train_dataloader,
             batch_size=batch_size,
             device=device,
         )
 
-        # Empty cache
-        # torch.cuda.empty_cache()
-
         running_vloss = 0.0
         model.eval()
-
         for i, vdata in enumerate(validation_dataloader):
             vinputs, vx1 = vdata
             voutputs = model(vinputs.to(device), dt=dt)
             vloss = loss_fn(voutputs, vx1.to(device))
-            running_vloss += vloss
+            running_vloss += vloss.item()
         
         avg_vloss = running_vloss / (i + 1)
         print("LOSS [train: {}] [valid: {}] TIME [epoch: {:.3g} sec]".format(
-            avg_loss, avg_vloss, time.time() - etime0), flush=True)
+            avg_tloss, avg_vloss, time.time() - etime0), flush=True)
+        
+        loss_hist_train.append(avg_tloss)
+        loss_hist_valid.append(avg_vloss)
 
         # Track best performance, and save the model's state
         if avg_vloss < best_vloss:
@@ -68,7 +70,12 @@ def train_model(model, dt, loss_fn, optimizer,
             torch.save(model.state_dict(), model_path)
         
     time1 = time.time()
-    print(f"Finished in {time1-time0:.3f} seconds.")
+    print(f"Finished training in {time1-time0:.3f} seconds.")
+    print("Saving training and validation loss history...")
+    np.save(f"{outdir}/training_loss_history.npy", loss_hist_train)
+    np.save(f"{outdir}/validation_loss_history.npy", loss_hist_valid)
+    print("Done!")
+
 
 
 def train_one_epoch(epoch_idx, model, dt, loss_fn, optimizer,
@@ -93,7 +100,7 @@ def train_one_epoch(epoch_idx, model, dt, loss_fn, optimizer,
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
     running_loss = 0.
     last_loss = 0.
-    for i, data in enumerate(dataloader):
+    for i, data in enumerate(dataloader):  # train over batches
         input, x1 = data
 
         # Zero gradients for the batch
@@ -113,10 +120,7 @@ def train_one_epoch(epoch_idx, model, dt, loss_fn, optimizer,
         running_loss += loss.item()
         if i % batch_size == (batch_size-1):
             last_loss = running_loss / batch_size  # loss per batch
-            print('  batch {} loss: {}'.format(i + 1, last_loss))
+            print(f'\tbatch {i + 1} loss: {last_loss}', flush=True)
             running_loss = 0.
-            sys.stdout.flush()    
-
-        del x1_pred
 
     return last_loss
