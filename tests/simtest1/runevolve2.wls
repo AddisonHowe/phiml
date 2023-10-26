@@ -8,15 +8,17 @@ S2=ToExpression[$ScriptCommandLine[[5]]];
 dt=ToExpression[$ScriptCommandLine[[6]]];
 
 
-signal={{S1}, {S2}}; (*signal={{1},{-1}}*)
+signal={{S1}, {S2}};
 
 
+(* Starting Weights *)
 (* W1={{1,3},{2,2},{3,1}}; *)
 (* W2={{1,1,-2},{0,1,0},{-1,2,1}}; *)
 (* W3={{2,3,1}}; *)
 (* WT={{2,4},{-1,1}}; *)
 
 
+(* Weights after update from training over ALL data *)
 W1={
    {1.00795443, 2.99556809},
    {1.99612237, 1.97785077},
