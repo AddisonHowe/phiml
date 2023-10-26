@@ -6,6 +6,8 @@ import numpy as np
 import torch
 from torch import nn
 from torch.autograd.functional import jacobian as jacobian
+# from torch.func import jacrev, vmap
+from functorch import jacrev, vmap
 
 class PhiNN(nn.Module):
     
@@ -79,6 +81,10 @@ class PhiNN(nn.Module):
             self.initialize_weights(testing=testing, 
                                     vals_phi=init_weight_values_phi,
                                     vals_tilt=init_weight_values_tilt)
+            
+        def _phi_summed(y):
+            return self.phi_nn(y).sum(axis=0)
+        self._phi_summed = _phi_summed
 
     def f(self, t, y, sig_params):
         """Drift term.
@@ -88,7 +94,7 @@ class PhiNN(nn.Module):
         Returns:
             tensor of shape (k, ndim,)
         """
-        return -(self.grad_phi(t, y) + self.grad_tilt(t, sig_params))
+        return -(self.grad_phi(t, y) + self.grad_tilt(t, sig_params)[:,None,:])
 
     def g(self, t, y):
         """Diffusion term.
@@ -108,7 +114,7 @@ class PhiNN(nn.Module):
             scalar
         """
         return self.phi_nn(y)
-        
+
     def grad_phi(self, t, y):
         """Gradient of potential, without tilt.
         Args:
@@ -118,8 +124,19 @@ class PhiNN(nn.Module):
             tensor of shape (ndim,)
         """
         # val_phi = self.phi_nn(y)
+        # print(y.shape)
         # grad = torch.autograd.grad(torch.sum(val_phi), y, create_graph=True)[0]
-        grad = jacobian(self.phi_nn, y, create_graph=True).sum(axis=(0,1))
+        # grad = jacobian(self.phi_nn, y.view([-1, self.ndim]), create_graph=True)#.sum(axis=(0,1))
+        # grad = self.batch_jac(y).sum((1,2))
+        # print('y',y.shape)
+        grad = jacobian(self._phi_summed, y, create_graph=True).sum(axis=(0,1))
+        # compute_batch_jacobian = vmap(jacrev(self.phi_nn, argnums=2), in_dims=(None, None, 0))
+        # grad = jacrev(self.phi_nn, argnums=self.ndim)(y)
+        # print('grad',grad.shape)
+        # print(grad)
+        # print("grad.shape", grad.shape)
+        # print(grad)
+        # raise RuntimeError
         return grad
         
     def grad_tilt(self, t, sig_params):
@@ -147,55 +164,71 @@ class PhiNN(nn.Module):
         """
         fval = self.f(t, y, params)
         gval = self.g(t, y)
+        # print(fval.shape)
         return y + fval * dt + gval * dw
     
     def forward(self, x, dt=1e-3):
-        t0 = x[:,0]
-        t1 = x[:,1]
-        y0 = x[:,2:2+self.ndim*self.ncells].view([-1, self.ncells, self.ndim])
-        sigparams = x[:,2+self.ndim*self.ncells:]
+        """Forward pass of the model.
+
+        Args:
+            x (torch.Tensor): Model inputs. Shape (batch_size, 2+ncells+nparams)
+            dt (float, optional): Constant step size. Defaults to 1e-3.
+
+        Returns:
+            _type_: _description_
+        """
+        t0 = x[...,0]
+        t1 = x[...,1]
+        y0 = x[...,2:2+self.ndim*self.ncells].view([-1, self.ncells, self.ndim])
+        sigparams = x[...,2+self.ndim*self.ncells:]
         y0.requires_grad_()
 
-        results = torch.zeros([len(x), self.ncells, self.ndim], 
-                              dtype=self.dtype, device=self.device)
+        # results = torch.zeros([len(x), self.ncells, self.ndim], 
+        #                       dtype=self.dtype, device=self.device)
         
-        for i in range(len(x)):
-            # y = self.simulate_forward(x[i], dt=dt)
-            y = self.simulate_forward(t0[i], t1[i], y0[i], sigparams[i], dt=dt)
-            results[i] = y
+        # for i in range(len(x)):
+        #     y = self.simulate_forward(t0[i], t1[i], y0[i], sigparams[i], dt=dt)
+        #     results[i] = y
+
+        results = self.simulate_forward(t0, t1, y0, sigparams, dt=dt)
         return results
 
     def simulate_forward(self, t0, t1, y0, sigparams, 
                          dt=1e-3, history=False):
         """Simulate all trajectories forward in time.
         Args:
-            x : tensor of shape ???
+            t0 (batch_size): 
+            t1 (batch_size): 
+            y0 (batch_size, ncells, ndim): 
+            sigparams (): 
         Returns:
             ...
         """
-        # t0 = x[0]
-        # t1 = x[1]
-        # y0 = x[2:2+self.ndim*self.ncells].view([self.ncells, self.ndim])
-        # ps = x[2+self.ndim*self.ncells:]
-        # tcrit = ps[0]
-        # p0 = ps[1:3]
-        # p1 = ps[3:5]
                 
-        ts = torch.linspace(t0.item(), t1.item(), 
-                            1+round((t1.item() - t0.item()) / dt), 
-                            dtype=self.dtype)
+        # ts = torch.linspace(t0.item(), t1.item(), 
+        #                     1+round((t1.item() - t0.item()) / dt), 
+        #                     dtype=self.dtype)
+
+        ts = torch.ones(t0.shape) * t0
+        nsteps = round((t1[0].item() - t0[0].item()) / dt)
+        
         y = y0
         y_hist = []
-        # sigparams = torch.tensor([tcrit, *p0, *p1], 
-        #                          dtype=self.dtype, device=self.device)
+
         if history:
             y_hist.append(y0.detach().numpy())
-        for i, t in enumerate(ts[:-1]):
-            dw = torch.normal(0, np.sqrt(dt), [self.ncells, self.ndim], 
-                              device=self.device, dtype=self.dtype)
+        # for i, t in enumerate(ts[:-1]):
+        for i in range(nsteps):
+            # dw = torch.normal(0, np.sqrt(dt), [self.ncells, self.ndim], 
+            #                   device=self.device, dtype=self.dtype)
+            dw = np.sqrt(dt) * torch.normal(0, 1, y0.shape, 
+                                            device=self.device, 
+                                            dtype=self.dtype)
             if self.testing and (self.testing_dw is not None):
                 dw[:] = self.testing_dw
-            y = self.step(t, y, sigparams, dt, dw)
+            # y = self.step(t, y, sigparams, dt, dw)
+            y = self.step(ts, y, sigparams, dt, dw)
+            ts += dt # added
             if history:
                 y_hist.append(y.detach().numpy())
         return y if not history else (y, y_hist)

@@ -1,9 +1,13 @@
 # phiml: A Machine Learning approach to Potential Dynamics
 
 ## TODO
-1. Generate *in silico* training data.
-2. Construct a ML model to learn from training data a landscape function $\phi(\boldsymbol{x})$.
 
 ## Ideas
+
+* Incorporate the number of desired fixed points
+* Parallelize batches.
+* Parallelize individual simulations.
+* Symmetry in the order of the cells within the population: $\boldsymbol{x}_i$
+* Precompute summary stat for $x_1$ data
 
 # References

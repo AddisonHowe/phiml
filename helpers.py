@@ -8,7 +8,8 @@ def get_binary_function(tcrit, p0, p1):
     return lambda t: p0 if t < tcrit else p1
 
 def jump_function(t, tcrit, p0, p1):
-    return (t < tcrit) * p0 + (t >= tcrit) * p1
+    return torch.reshape((t < tcrit), [t.shape[0],1]) * p0 + \
+           torch.reshape((t >= tcrit), [t.shape[0],1]) * p1
 
 def select_device(overwrite=None):
     if overwrite:

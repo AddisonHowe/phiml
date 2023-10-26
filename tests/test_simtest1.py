@@ -72,8 +72,8 @@ class TestDataloader:
     # ['mps', torch.float32], # ERRORS because of bug in pytorch?
 ])
 @pytest.mark.parametrize('batch_size, batch_sims', [
-    [4, [['sim0', 'sim1', 'sim2', 'sim3']]],
-    # [2, [['sim0', 'sim1'], ['sim2', 'sim3']]],
+    [4, [['sim0', 'sim1', 'sim2', 'sim3']]],  # train over all 4 in one batch
+    [2, [['sim0', 'sim1'], ['sim2', 'sim3']]],  # train over 2 batches of size 2
     # [1, [['sim0'], ['sim1'], ['sim2'], ['sim3']]],
 ])
 class TestTwoStepSimulation:
