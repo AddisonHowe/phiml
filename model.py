@@ -6,8 +6,6 @@ import numpy as np
 import torch
 from torch import nn
 from torch.autograd.functional import jacobian as jacobian
-# from torch.func import jacrev, vmap
-from functorch import jacrev, vmap
 
 class PhiNN(nn.Module):
     
