@@ -105,7 +105,6 @@ def main(args):
         dtype=dtype,
     ).to(device)
 
-    outdir = "out/model_training"
     os.makedirs(outdir, exist_ok=True)
 
     loss_fn = mean_cov_loss
