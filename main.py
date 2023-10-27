@@ -103,6 +103,8 @@ def main(args):
         sigma=sigma,
         device=device,
         dtype=dtype,
+        sample_cells=True,
+        rng=rng,
     ).to(device)
 
     os.makedirs(outdir, exist_ok=True)

@@ -445,3 +445,69 @@ class TestNoNoise:
                 errors.append(msg)
         assert not errors, "Errors occurred:\n{}".format('\n'.join(errors))
         
+
+@pytest.mark.parametrize("ws, x, grad_phi_exp", [
+    [[W1, W2, W3], [[[0, 0]]], [[[6.0, 14.0]]]],
+    [[W1, W2, W3], [[[0, 1]]], [[[-3.5586, -0.83997]]]],
+    [[W1, W2, W3], [[[1, 0]]], [[[1.11945, 2.71635]]]],
+    [[W1, W2, W3], [[[1, 1]]], [[[-0.00409335, 0.0116181]]]],
+    [[W1, W2, W3], 
+     [[[1, 1]], [[1, 0]]], 
+     [[[-0.00409335, 0.0116181]], [[1.11945, 2.71635]]]],
+    [[W1, W2, W3], 
+     [[[1, 1], [0, 0]],  # 2 batches, 2 cells/batch
+      [[1, 0], [0, 1]]], 
+     [[[-0.00409335, 0.0116181], [6.0, 14.0]], 
+      [[1.11945, 2.71635], [-3.5586, -0.83997]]]],
+    [[W1, W2, W3], 
+     [[[1, 1], [0, 0]],  # 3 batches, 2 cells/batch
+      [[1, 0], [0, 1]],
+      [[1, 0], [0, 1]],], 
+     [[[-0.00409335, 0.0116181], [6.0, 14.0]], 
+      [[1.11945, 2.71635], [-3.5586, -0.83997]],
+      [[1.11945, 2.71635], [-3.5586, -0.83997]]]],
+])
+@pytest.mark.parametrize("ncells", [1,2,3,4])
+@pytest.mark.parametrize("seed", [1,2,3])
+@pytest.mark.parametrize("eval_mode", [True, False])
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+def test_grad_phi_with_shuffle(ws, x, grad_phi_exp, ncells, seed, eval_mode, dtype):
+    npdtype = np.float32 if dtype == torch.float32 else np.float64
+    grad_phi_exp = np.array(grad_phi_exp, dtype=npdtype)
+    model = PhiNN(
+        ndim=2, nsig=2, f_signal=None, 
+        ncells=ncells,
+        testing=True, include_bias=False, 
+        init_weights=True,
+        init_weight_values_phi = ws,
+        dtype=dtype,
+        sample_cells=True,
+        rng=np.random.default_rng(seed=seed)
+    )
+    if eval_mode: model.eval()
+
+    x = torch.tensor(x, dtype=dtype, requires_grad=True)
+    x_samp = model._sample_y0(x)
+    grad_phi_act = model.grad_phi(0, x_samp).detach().numpy()
+
+    rng2 = np.random.default_rng(seed=seed)
+    nbatches = x.shape[0]
+    ncells_input = x.shape[1]
+    grad_phi_exp_shuffled = np.zeros([nbatches, ncells, x.shape[2]], 
+                                     dtype=npdtype)
+    
+    if ncells_input < ncells:
+        for bidx in range(nbatches):
+            samp_idxs = rng2.choice(x.shape[1], ncells, True)
+            grad_phi_exp_shuffled[bidx,:] = grad_phi_exp[bidx,samp_idxs]
+    else:
+        for bidx in range(nbatches):
+            samp_idxs = rng2.choice(x.shape[1], ncells, False)
+            grad_phi_exp_shuffled[bidx,:] = grad_phi_exp[bidx,samp_idxs]
+
+    errors = []
+    if not np.allclose(grad_phi_exp_shuffled, grad_phi_act, atol=1e-6):
+        msg = f"Value mismatch between grad phi actual and expected."
+        msg += f"Expected:\n{grad_phi_exp_shuffled}\nGot:\n{grad_phi_act}"
+        errors.append(msg)
+    assert not errors, "Errors occurred:\n{}".format("\n".join(errors))

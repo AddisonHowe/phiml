@@ -47,6 +47,7 @@ def train_model(model, dt, loss_fn, optimizer,
             train_dataloader,
             batch_size=batch_size,
             device=device,
+            verbosity=verbosity,
         )
         if verbosity >  1: disp_mem_usage("POST TRAIN")
 
@@ -65,6 +66,8 @@ def train_model(model, dt, loss_fn, optimizer,
         
         loss_hist_train.append(avg_tloss)
         loss_hist_valid.append(avg_vloss)
+        np.save(f"{outdir}/training_loss_history.npy", loss_hist_train)
+        np.save(f"{outdir}/validation_loss_history.npy", loss_hist_valid)
 
         # Track best performance, and save the model's state
         if avg_vloss < best_vloss:
@@ -75,11 +78,6 @@ def train_model(model, dt, loss_fn, optimizer,
         
     time1 = time.time()
     print(f"Finished training in {time1-time0:.3f} seconds.")
-    print("Saving training and validation loss history...")
-    np.save(f"{outdir}/training_loss_history.npy", loss_hist_train)
-    np.save(f"{outdir}/validation_loss_history.npy", loss_hist_valid)
-    print("Done!")
-
 
 
 def train_one_epoch(epoch_idx, model, dt, loss_fn, optimizer,

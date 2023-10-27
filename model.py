@@ -9,7 +9,7 @@ from torch.autograd.functional import jacobian as jacobian
 
 class PhiNN(nn.Module):
     
-    def __init__(self, ndim=2, nsig=2, f_signal=None, **kwargs):
+    def __init__(self, ndim=2, nsig=2, f_signal=None, nsigparams=5, **kwargs):
         """
         Args:
             ndim: (int) dimension of state space.
@@ -28,7 +28,9 @@ class PhiNN(nn.Module):
         self.testing_dw = kwargs.get('testing_dw', None)
         ncells = kwargs.get('ncells', 100)
         device = kwargs.get('device', 'cpu')
+        sample_cells = kwargs.get('sample_cells', False)
         dtype = kwargs.get('dtype', torch.float32)
+        rng = kwargs.get('rng', np.random.default_rng())
         #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
         
         self.ndim = ndim
@@ -39,6 +41,9 @@ class PhiNN(nn.Module):
         self.testing = testing
         self.device = device
         self.dtype = dtype
+        self.nsigparams = nsigparams
+        self.sample_cells = sample_cells
+        self.rng = rng
 
         if self.device != 'cpu':
             self.sigma = torch.tensor(sigma, dtype=self.dtype, device=device)
@@ -161,13 +166,21 @@ class PhiNN(nn.Module):
         Returns:
             _type_: _description_
         """
+        # Parse the inputs
+        ncells_input = x.shape[1] - 2 - self.nsigparams
         t0 = x[...,0]
         t1 = x[...,1]
-        y0 = x[...,2:2+self.ndim*self.ncells].view([-1, self.ncells, self.ndim])
-        sigparams = x[...,2+self.ndim*self.ncells:]
+        y0 = x[...,2:-self.nsigparams].view([len(x), -1, self.ndim])
+        sigparams = x[...,-self.nsigparams:]
+        # Sample from the given set of cells, or use the sample directly.
+        if self.sample_cells:
+            y0 = self._sample_y0(y0)
+        
+        assert y0.shape[1] == self.ncells, \
+            f"Trying to simulate {y0.shape[1]} cells. Expected {self.ncells}."
+        
         y0.requires_grad_()
-        results = self.simulate_forward(t0, t1, y0, sigparams, dt=dt)
-        return results
+        return self.simulate_forward(t0, t1, y0, sigparams, dt=dt)
 
     def simulate_forward(self, t0, t1, y0, sigparams, 
                          dt=1e-3, history=False):
@@ -234,4 +247,25 @@ class PhiNN(nn.Module):
                                      device=self.device)
                     layer.weight = torch.nn.Parameter(w)
                     count += 1
+    
+    def _sample_y0(self, y0):
+        y0_samp = torch.empty([y0.shape[0], self.ncells, y0.shape[2]], 
+                               dtype=self.dtype, device=self.device)
+        if y0.shape[1] < self.ncells:
+            # Sample with replacement
+            for bidx in range(y0.shape[0]):
+                samp_idxs = torch.tensor(
+                    self.rng.choice(y0.shape[1], self.ncells, True),
+                    dtype=int, device=self.device
+                )
+                y0_samp[bidx,:] = y0[bidx,samp_idxs]
+        else:
+            # Sample without replacement
+            for bidx in range(y0.shape[0]):
+                samp_idxs = torch.tensor(
+                    self.rng.choice(y0.shape[1], self.ncells, False),
+                    dtype=int, device=self.device
+                )
+                y0_samp[bidx,:] = y0[bidx,samp_idxs]
+        return y0_samp
         

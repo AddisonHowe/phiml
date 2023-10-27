@@ -1,4 +1,5 @@
 import pytest
+import os, glob
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -98,6 +99,11 @@ class TestTwoStepSimulation:
         ).to(device)
         return model
     
+    def _remove_files(self, outdir, name):
+        # Remove generated files
+        for filename in glob.glob(f"{outdir}/{name}*"):
+            os.remove(filename) 
+    
     def test_1_epoch_train_full_batch(self, device, dtype, 
                                       batch_size, batch_sims):
         learning_rate = 0.1
@@ -122,7 +128,10 @@ class TestTwoStepSimulation:
             batch_size=batch_size,
             device=device,
             outdir=OUTDIR,
+            model_name='tmp_model',
         )
+
+        self._remove_files(OUTDIR, 'tmp_model')
 
         newparams = [p.detach().numpy().copy() for p in model.parameters()]
 
@@ -188,7 +197,10 @@ class TestTwoStepSimulation:
             batch_size=batch_size,
             device=device,
             outdir=OUTDIR,
+            model_name='tmp_model',
         )
+
+        self._remove_files(OUTDIR, 'tmp_model')
         
         newparams = [p.detach().numpy().copy() for p in model.parameters()]
 
@@ -239,7 +251,10 @@ class TestTwoStepSimulation:
             batch_size=batch_size,
             device=device,
             outdir=OUTDIR,
+            model_name='tmp_model',
         )
+
+        self._remove_files(OUTDIR, 'tmp_model')
 
         newparams = [p.detach().numpy().copy() for p in model2.parameters()]
         
