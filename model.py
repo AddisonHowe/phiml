@@ -21,11 +21,11 @@ class PhiNN(nn.Module):
         #~~~~~~~~~~~~  process kwargs  ~~~~~~~~~~~~#
         sigma = kwargs.get('sigma', 1e-3)
         testing = kwargs.get('testing', False)
-        include_bias = kwargs.get('include_bias', True)
+        include_signal_bias = kwargs.get('include_bias', False)
         init_weights = kwargs.get('init_weights', True)
         init_weight_values_phi = kwargs.get('init_weight_values_phi', None)
         init_weight_values_tilt = kwargs.get('init_weight_values_tilt', None)
-        self.testing_dw = kwargs.get('testing_dw', None)
+        testing_dw = kwargs.get('testing_dw', None)
         ncells = kwargs.get('ncells', 100)
         device = kwargs.get('device', 'cpu')
         sample_cells = kwargs.get('sample_cells', False)
@@ -39,6 +39,7 @@ class PhiNN(nn.Module):
         self.sigma = sigma
         self.ncells = ncells
         self.testing = testing
+        self.testing_dw = testing_dw
         self.device = device
         self.dtype = dtype
         self.nsigparams = nsigparams
@@ -77,13 +78,16 @@ class PhiNN(nn.Module):
 
         # Tilt Neural Network: Linear tilt values. Maps nsigs to ndims.
         self.tilt_nn = nn.Sequential(
-            nn.Linear(self.nsig, self.ndim, bias=include_bias)
+            nn.Linear(self.nsig, self.ndim, bias=include_signal_bias)
         )
 
         if init_weights:
-            self.initialize_weights(testing=testing, 
-                                    vals_phi=init_weight_values_phi,
-                                    vals_tilt=init_weight_values_tilt)
+            self.initialize_weights(
+                testing=testing, 
+                vals_phi=init_weight_values_phi,
+                vals_tilt=init_weight_values_tilt,
+                include_signal_bias=include_signal_bias,
+            )
             
         def _phi_summed(y):
             return self.phi_nn(y).sum(axis=0)
@@ -167,7 +171,6 @@ class PhiNN(nn.Module):
             _type_: _description_
         """
         # Parse the inputs
-        ncells_input = x.shape[1] - 2 - self.nsigparams
         t0 = x[...,0]
         t1 = x[...,1]
         y0 = x[...,2:-self.nsigparams].view([len(x), -1, self.ndim])
@@ -214,7 +217,8 @@ class PhiNN(nn.Module):
                 y_hist.append(y.detach().numpy())
         return y if not history else (y, y_hist)
     
-    def initialize_weights(self, testing=False, vals_phi=None, vals_tilt=None):
+    def initialize_weights(self, testing=False, vals_phi=None, vals_tilt=None,
+                           include_signal_bias=False):
         if testing:
             self._initialize_test_weights(vals_phi, vals_tilt)
             return
@@ -226,7 +230,8 @@ class PhiNN(nn.Module):
         for layer in self.tilt_nn:
             if isinstance(layer, nn.Linear):
                 nn.init.normal_(layer.weight, mean=0, std=0.1)
-                nn.init.constant_(layer.bias, 0)
+                if include_signal_bias:
+                    nn.init.constant_(layer.bias, 0)
         
     def _initialize_test_weights(self, vals_phi=None, vals_tilt=None):
         # Initialize weights for Phi Net

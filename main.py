@@ -34,6 +34,8 @@ def parse_args(args):
     parser.add_argument('--use_gpu', action="store_true")
     parser.add_argument('-e', '--num_epochs', type=int, default=50)
     parser.add_argument('-b', '--batch_size', type=int, default=32)
+    parser.add_argument('--optimizer', type=str, default="sgd", 
+                        choices=['sgd', 'adam', 'rms'])
     parser.add_argument('--learning_rate', type=float, default=1e-3)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--dtype', type=str, default="float32", 
@@ -58,6 +60,7 @@ def main(args):
     use_gpu = args.use_gpu
     batch_size = args.batch_size
     num_epochs = args.num_epochs
+    optimization_method = args.optimizer
     learning_rate = args.learning_rate
     momentum = args.momentum
     seed = args.seed
@@ -111,11 +114,7 @@ def main(args):
 
     loss_fn = mean_cov_loss
 
-    optimizer = torch.optim.SGD(
-        model.parameters(), 
-        lr=learning_rate, 
-        momentum=momentum
-    )
+    optimizer = select_optimizer(model, optimization_method, args)
 
     train_model(
         model, dt, loss_fn, optimizer, 
@@ -127,6 +126,28 @@ def main(args):
         outdir=outdir,
     )
 
+def select_optimizer(model, optimization_method, args):
+    if optimization_method == 'sgd':
+        optimizer = torch.optim.SGD(
+            model.parameters(), 
+            lr=args.learning_rate, 
+            momentum=args.momentum,
+        )
+    elif optimization_method == 'adam':
+        optimizer = torch.optim.Adam(
+            model.parameters(), 
+            lr=args.learning_rate,
+        )
+    elif optimization_method == 'rms':
+        optimizer = torch.optim.RMSprop(
+            model.parameters(), 
+            lr=args.learning_rate,
+            momentum=args.momentum,
+        )
+    else:
+        msg = f"{optimization_method} optimization not implemented."
+        raise NotImplementedError(msg)
+    return optimizer
 
 if __name__ == "__main__":
     args = parse_args(sys.argv[1:])
