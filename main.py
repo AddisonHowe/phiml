@@ -41,6 +41,7 @@ def parse_args(args):
     parser.add_argument('--dtype', type=str, default="float32", 
                         choices=['float32', 'float64'])
 
+    parser.add_argument('--continuation', type=str, default=None)
     parser.add_argument('--seed', type=int, default=0)
     return parser.parse_args(args)
 
@@ -63,12 +64,20 @@ def main(args):
     optimization_method = args.optimizer
     learning_rate = args.learning_rate
     momentum = args.momentum
+    continuation_fpath = args.continuation
     seed = args.seed
     dtype = torch.float32 if args.dtype == 'float32' else torch.float64
 
     device = select_device() if use_gpu else 'cpu'
     print(f"Using device: {device}")
 
+    if not seed:
+        seed = np.random.random_integers(2**32)
+    print(f"Using seed: {seed}")
+
+    if continuation_fpath:
+        print(f"Continuing training of model {continuation_fpath}")
+    
     rng = np.random.default_rng(seed=seed)
     torch.manual_seed(int(rng.integers(100000, 2**32)))
 
@@ -109,6 +118,11 @@ def main(args):
         sample_cells=True,
         rng=rng,
     ).to(device)
+
+    if continuation_fpath:
+        model.load_state_dict(
+            torch.load(continuation_fpath, map_location=torch.device(device))
+        )
 
     os.makedirs(outdir, exist_ok=True)
 

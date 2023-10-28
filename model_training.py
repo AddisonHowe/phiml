@@ -30,8 +30,8 @@ def train_model(model, dt, loss_fn, optimizer,
     verbosity = kwargs.get('verbosity', 1)
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
-    np.savetxt(f"{outdir}/ncells.txt", [model.ncells])
-    np.savetxt(f"{outdir}/sigma.txt", [model.sigma])
+    np.savetxt(f"{outdir}/ncells.txt", [model.get_ncells()])
+    np.savetxt(f"{outdir}/sigma.txt", [model.get_sigma()])
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     time0 = time.time()

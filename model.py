@@ -93,6 +93,16 @@ class PhiNN(nn.Module):
             return self.phi_nn(y).sum(axis=0)
         self._phi_summed = _phi_summed
 
+    def get_ncells(self):
+        if isinstance(self.ncells, torch.Tensor):
+            return self.ncells.item()
+        return self.ncells
+    
+    def get_sigma(self):
+        if isinstance(self.sigma, torch.Tensor):
+            return self.sigma.item()
+        return self.sigma
+
     def f(self, t, y, sig_params):
         """Drift term.
         Args:
