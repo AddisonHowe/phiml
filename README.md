@@ -17,5 +17,8 @@
 * Parallelize individual simulations. (Completed)
 * Customizable layer architecture
 * batch normalization and dropout
+* Autocorrelation time of individual cells to determine transitioning flag. 
+* Softmax activation prevents super-linear growth in the potential function.
+* Normalize data beforehand?
 
 # References
