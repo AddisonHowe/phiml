@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from dataset import LandscapeSimulationDataset
 from model import PhiNN
 from model_training import train_model
-from helpers import select_device, jump_function, mean_cov_loss
+from helpers import select_device, jump_function, mean_cov_loss, kl_divergence_est
 
 
 def parse_args(args):
@@ -29,6 +29,8 @@ def parse_args(args):
     parser.add_argument('-ns', '--nsigs', type=int, default=2)
     parser.add_argument('-nc', '--ncells', type=int, default=100)
     parser.add_argument('-dt', '--dt', type=float, default=1e-3)
+
+    parser.add_argument('--infer_noise', action="store_true")
     parser.add_argument('--sigma', type=float, default=1e-3)
 
     parser.add_argument('--use_gpu', action="store_true")
@@ -57,6 +59,7 @@ def main(args):
     nsigs = args.nsigs
     dt = args.dt
     ncells = args.ncells
+    infer_noise = args.infer_noise
     sigma = args.sigma
     use_gpu = args.use_gpu
     batch_size = args.batch_size
@@ -72,7 +75,7 @@ def main(args):
     print(f"Using device: {device}")
 
     if not seed:
-        seed = np.random.random_integers(2**32)
+        seed = np.random.randint(2**32)
     print(f"Using seed: {seed}")
 
     if continuation_fpath:
@@ -110,8 +113,10 @@ def main(args):
     # Construct the model
     f_signal = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
     model = PhiNN(
-        ndim=ndims, nsig=nsigs, f_signal=f_signal, 
+        ndim=ndims, nsig=nsigs, 
+        f_signal=f_signal, nsigparams=5,
         ncells=ncells, 
+        infer_noise=infer_noise,
         sigma=sigma,
         device=device,
         dtype=dtype,
@@ -126,7 +131,8 @@ def main(args):
 
     os.makedirs(outdir, exist_ok=True)
 
-    loss_fn = mean_cov_loss
+    # loss_fn = mean_cov_loss
+    loss_fn = kl_divergence_est
 
     optimizer = select_optimizer(model, optimization_method, args)
 

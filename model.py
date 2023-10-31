@@ -31,23 +31,31 @@ class PhiNN(nn.Module):
         sample_cells = kwargs.get('sample_cells', False)
         dtype = kwargs.get('dtype', torch.float32)
         rng = kwargs.get('rng', np.random.default_rng())
+        infer_noise = kwargs.get('infer_noise', False)
+        hidden_dims = kwargs.get('hidden_dims', [16, 32, 32, 16])
+        layer_normalize = kwargs.get('layer_normalize', True)
         #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
         
         self.ndim = ndim
         self.nsig = nsig
         self.f_signal = f_signal
-        self.sigma = sigma
+        self.nsigparams = nsigparams
         self.ncells = ncells
-        self.testing = testing
-        self.testing_dw = testing_dw
+        self.infer_noise = infer_noise
+        self.sigma = sigma
         self.device = device
         self.dtype = dtype
-        self.nsigparams = nsigparams
         self.sample_cells = sample_cells
         self.rng = rng
+        self.testing = testing
+        self.testing_dw = testing_dw
 
-        if self.device != 'cpu':
-            self.sigma = torch.tensor(sigma, dtype=self.dtype, device=device)
+        if self.infer_noise:
+            self.logsigma = torch.nn.Parameter(torch.tensor(0.))
+            self.sigma = None
+        else:
+            if self.device != 'cpu':
+                self.sigma = torch.tensor(sigma, dtype=self.dtype, device=device)
 
         # Potential Neural Network: Maps ndims to a scalar. 
         activation1 = nn.Tanh if testing else nn.Softplus
@@ -60,21 +68,20 @@ class PhiNN(nn.Module):
                 nn.Linear(3, 1, bias=False),
             )
         else:
-            self.phi_nn = nn.Sequential(
-                nn.Linear(ndim, 16),
-                # nn.BatchNorm1d(16),
-                activation1(),
-                nn.Linear(16, 32),
-                # nn.BatchNorm1d(16),
-                activation1(),
-                nn.Linear(32, 32),
-                # nn.BatchNorm1d(16),
-                activation1(),
-                nn.Linear(32, 16),
-                # nn.BatchNorm1d(16),
-                activation1(),
-                nn.Linear(16, 1),
-            )
+            layer_list = [nn.Linear(ndim, hidden_dims[0])]
+            if layer_normalize:
+                layer_list.append(nn.LayerNorm([hidden_dims[0]]))
+            layer_list.append(activation1())
+
+            for i in range(len(hidden_dims) - 1):
+                layer_list.append(nn.Linear(hidden_dims[i], hidden_dims[i+1]))
+                if layer_normalize:
+                    layer_list.append(nn.LayerNorm([hidden_dims[i+1]]))
+                layer_list.append(activation1())
+            
+            layer_list.append(nn.Linear(hidden_dims[-1], 1))
+
+            self.phi_nn = nn.Sequential(*layer_list)
 
         # Tilt Neural Network: Linear tilt values. Maps nsigs to ndims.
         self.tilt_nn = nn.Sequential(
@@ -89,9 +96,7 @@ class PhiNN(nn.Module):
                 include_signal_bias=include_signal_bias,
             )
             
-        def _phi_summed(y):
-            return self.phi_nn(y).sum(axis=0)
-        self._phi_summed = _phi_summed
+        self._phi_summed = lambda y : self.phi_nn(y).sum(axis=0)
 
     def get_ncells(self):
         if isinstance(self.ncells, torch.Tensor):
@@ -99,6 +104,8 @@ class PhiNN(nn.Module):
         return self.ncells
     
     def get_sigma(self):
+        if self.infer_noise:
+            return np.exp(self.logsigma.data.cpu().numpy())
         if isinstance(self.sigma, torch.Tensor):
             return self.sigma.item()
         return self.sigma
@@ -121,7 +128,10 @@ class PhiNN(nn.Module):
         Returns:
             Scalar noise or TODO: nonscalar noise
         """
-        return self.sigma
+        if self.infer_noise:
+            return torch.exp(self.logsigma)
+        else:
+            return self.sigma
     
     def phi(self, y):
         """Potential value, without tilt.
@@ -232,16 +242,20 @@ class PhiNN(nn.Module):
         if testing:
             self._initialize_test_weights(vals_phi, vals_tilt)
             return
-        # Weight initialization scheme
+        # Weight initialization for Phi
         for layer in self.phi_nn:
             if isinstance(layer, nn.Linear):
                 nn.init.normal_(layer.weight, mean=0, std=0.1)
                 nn.init.constant_(layer.bias, 0)
+        # Weight initialization for Tilt
         for layer in self.tilt_nn:
             if isinstance(layer, nn.Linear):
                 nn.init.normal_(layer.weight, mean=0, std=0.1)
                 if include_signal_bias:
                     nn.init.constant_(layer.bias, 0)
+        # Weight initialization for Sigma
+        if self.infer_noise:
+            nn.init.constant_(self.logsigma, 0)
         
     def _initialize_test_weights(self, vals_phi=None, vals_tilt=None):
         # Initialize weights for Phi Net

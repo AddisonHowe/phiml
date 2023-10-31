@@ -1,6 +1,7 @@
 """General Helper Functions
 """
 
+import numpy as np
 import torch
 
 def get_binary_function(tcrit, p0, p1):
@@ -55,3 +56,23 @@ def disp_mem_usage(msg=""):
     memalloc = torch.cuda.memory_allocated()
     maxmemalloc =torch.cuda.max_memory_allocated()
     print(f"[{msg}] mem: {memalloc}  \t  max: {maxmemalloc}", flush=True)
+
+def kl_divergence_est(p_samp, q_samp):
+    """Estimate the KL divergence. Returns the average over all batches.
+
+    Args:
+        p_samp : Target sample distribution of shape (b,n,d)
+        q_samp : Estimated sample distribution of shape (b,m,d)
+    Returns:
+        (float) KL estimate, averaged over each batch.
+    """
+    _, n, d = p_samp.shape
+    _, m, _ = q_samp.shape
+    
+    diffs_xy = torch.cdist(q_samp, p_samp, p=2)  # (b,m,n)
+    diffs_xx = torch.cdist(p_samp, p_samp, p=2)  # (b,n,n)
+    
+    r = torch.kthvalue(diffs_xx, 2, dim=1)[0]
+    s = torch.kthvalue(diffs_xy, 1, dim=1)[0]
+
+    return torch.mean(-torch.log(r/s).sum(axis=1) * d/n + np.log(m/(n-1.)))
