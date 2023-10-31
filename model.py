@@ -117,11 +117,10 @@ class PhiNN(nn.Module):
         Returns:
             tensor of shape (k, ndim,)
         """
-        t1 = self.grad_phi(t, y)
-        t2 = self.grad_tilt(t, sig_params)[:,None,:]
-        print(t1.min(), t1.max())
-        assert not torch.any(torch.isnan(t1)), print("t1:\n", t1)
-        assert not torch.any(torch.isnan(t2)), print("t2:\n", t2)
+        # t1 = self.grad_phi(t, y)
+        # t2 = self.grad_tilt(t, sig_params)[:,None,:]
+        # assert not torch.any(torch.isnan(t1)), t1
+        # assert not torch.any(torch.isnan(t2)), t2
         return -(self.grad_phi(t, y) + self.grad_tilt(t, sig_params)[:,None,:])
 
     def g(self, t, y):
@@ -237,8 +236,6 @@ class PhiNN(nn.Module):
             if self.testing and (self.testing_dw is not None):
                 dw[:] = self.testing_dw
             y = self.step(ts, y, sigparams, dt, dw)
-            print(i, y.min(), y.max())
-            # assert not torch.any(torch.isnan(y)), f"NAN at iter {i}, t={ts}, y:\n{y}"
             ts += dt
             if history:
                 y_hist.append(y.detach().numpy())
