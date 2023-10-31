@@ -57,20 +57,21 @@ def disp_mem_usage(msg=""):
     maxmemalloc =torch.cuda.max_memory_allocated()
     print(f"[{msg}] mem: {memalloc}  \t  max: {maxmemalloc}", flush=True)
 
-def kl_divergence_est(p_samp, q_samp):
+def kl_divergence_est(q_samp, p_samp):
     """Estimate the KL divergence. Returns the average over all batches.
 
     Args:
-        p_samp : Target sample distribution of shape (b,n,d)
         q_samp : Estimated sample distribution of shape (b,m,d)
+        p_samp : Target sample distribution of shape (b,n,d)
     Returns:
         (float) KL estimate, averaged over each batch.
     """
+
     _, n, d = p_samp.shape
     _, m, _ = q_samp.shape
     
-    diffs_xy = torch.cdist(q_samp, p_samp, p=2)  # (b,m,n)
     diffs_xx = torch.cdist(p_samp, p_samp, p=2)  # (b,n,n)
+    diffs_xy = torch.cdist(q_samp, p_samp, p=2)  # (b,m,n)
     
     r = torch.kthvalue(diffs_xx, 2, dim=1)[0]
     s = torch.kthvalue(diffs_xy, 1, dim=1)[0]

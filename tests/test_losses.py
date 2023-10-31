@@ -6,6 +6,9 @@ from helpers import mean_cov_loss, mean_diff_loss, kl_divergence_est
 @pytest.mark.parametrize('xpath, ypath, loss_exp', [
     ['tests/loss_test_data/xtest1.npy', 
      'tests/loss_test_data/ytest1.npy',
+     3.061594942272676],
+    ['tests/loss_test_data/ytest1.npy', 
+     'tests/loss_test_data/xtest1.npy',
      2.5479272873648875],
 ])
 def test_kl_loss(xpath, ypath, loss_exp):

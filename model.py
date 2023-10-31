@@ -19,6 +19,8 @@ class PhiNN(nn.Module):
         """
         super().__init__()
         #~~~~~~~~~~~~  process kwargs  ~~~~~~~~~~~~#
+        ncells = kwargs.get('ncells', 100)
+        infer_noise = kwargs.get('infer_noise', False)
         sigma = kwargs.get('sigma', 1e-3)
         testing = kwargs.get('testing', False)
         include_signal_bias = kwargs.get('include_bias', False)
@@ -26,14 +28,12 @@ class PhiNN(nn.Module):
         init_weight_values_phi = kwargs.get('init_weight_values_phi', None)
         init_weight_values_tilt = kwargs.get('init_weight_values_tilt', None)
         testing_dw = kwargs.get('testing_dw', None)
-        ncells = kwargs.get('ncells', 100)
         device = kwargs.get('device', 'cpu')
         sample_cells = kwargs.get('sample_cells', False)
         dtype = kwargs.get('dtype', torch.float32)
         rng = kwargs.get('rng', np.random.default_rng())
-        infer_noise = kwargs.get('infer_noise', False)
         hidden_dims = kwargs.get('hidden_dims', [16, 32, 32, 16])
-        layer_normalize = kwargs.get('layer_normalize', True)
+        layer_normalize = kwargs.get('layer_normalize', False)
         #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
         
         self.ndim = ndim
@@ -51,8 +51,7 @@ class PhiNN(nn.Module):
         self.testing_dw = testing_dw
 
         if self.infer_noise:
-            self.logsigma = torch.nn.Parameter(torch.tensor(0.))
-            self.sigma = None
+            self.logsigma = torch.nn.Parameter(torch.tensor(np.log(sigma)))
         else:
             if self.device != 'cpu':
                 self.sigma = torch.tensor(sigma, dtype=self.dtype, device=device)
@@ -254,8 +253,8 @@ class PhiNN(nn.Module):
                 if include_signal_bias:
                     nn.init.constant_(layer.bias, 0)
         # Weight initialization for Sigma
-        if self.infer_noise:
-            nn.init.constant_(self.logsigma, 0)
+        # if self.infer_noise:
+        #     nn.init.constant_(self.logsigma, self)
         
     def _initialize_test_weights(self, vals_phi=None, vals_tilt=None):
         # Initialize weights for Phi Net

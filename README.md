@@ -4,6 +4,8 @@
 
 * Remove conditionals in simulate_forward
 * No bias for signal mapping (Completed)
+* Ensure noise is not too great
+* Constrained landscape. Repellor at infinity.
 
 ## Ideas
 
