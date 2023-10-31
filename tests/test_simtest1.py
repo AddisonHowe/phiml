@@ -47,9 +47,11 @@ OUTDIR = "tests/simtest1/tmp_out"
 ###############################################################################
 
 
-@pytest.mark.parametrize('device, dtype', [
-    ['cpu', torch.float32], 
-    ['cpu', torch.float64], 
+@pytest.mark.parametrize('device, dtype, atol', [
+    ['cpu', torch.float32, 1e-4], 
+    ['cpu', torch.float64, 1e-6], 
+    ['cuda', torch.float32, 1e-4], 
+    ['cuda', torch.float64, 1e-6], 
     # ['mps', torch.float32], # ERRORS because of bug in pytorch?
 ])
 @pytest.mark.parametrize('batch_size, batch_sims', [
@@ -104,8 +106,10 @@ class TestTwoStepSimulation:
         for filename in glob.glob(f"{outdir}/{name}*"):
             os.remove(filename) 
     
-    def test_1_epoch_train_full_batch(self, device, dtype, 
+    def test_1_epoch_train_full_batch(self, device, dtype, atol, 
                                       batch_size, batch_sims):
+        if device == 'cuda' and not torch.cuda.is_available(): 
+            pytest.skip("cuda not available")
         learning_rate = 0.1
         dt = 0.1
         loss_fn = mean_diff_loss
@@ -119,7 +123,7 @@ class TestTwoStepSimulation:
             lr=learning_rate, 
         )
 
-        oldparams = [p.detach().numpy().copy() for p in model.parameters()]
+        oldparams = [p.detach().cpu().numpy().copy() for p in model.parameters()]
 
         train_model(
             model, dt, loss_fn, optimizer,
@@ -133,7 +137,7 @@ class TestTwoStepSimulation:
 
         self._remove_files(OUTDIR, 'tmp_model')
 
-        newparams = [p.detach().numpy().copy() for p in model.parameters()]
+        newparams = [p.detach().cpu().numpy().copy() for p in model.parameters()]
 
         if len(newparams) != 4:
             msg = "Bad length for parameters after training 1 epoch. " + \
@@ -164,7 +168,7 @@ class TestTwoStepSimulation:
             newparam_act = newparams[i]
             newparam_exp = oldparam_act - learning_rate * batch_grad_avgs[i]
             params_after_1_epoch.append(newparam_exp)
-            if not np.allclose(newparam_exp, newparam_act):
+            if not np.allclose(newparam_exp, newparam_act, atol=atol):
                 msg = f"Error in w{i}:\nExpected:\n{newparam_exp}\nGot:\n{newparam_act}"
                 errors1.append(msg)
 
@@ -172,8 +176,10 @@ class TestTwoStepSimulation:
             "Errors occurred in epoch 1:\n{}".format("\n".join(errors1))
         
 
-    def test_2_epoch_train_full_batch(self, device, dtype, 
+    def test_2_epoch_train_full_batch(self, device, dtype, atol, 
                                       batch_size, batch_sims):
+        if device == 'cuda' and not torch.cuda.is_available(): 
+            pytest.skip("cuda not available")
         learning_rate = 0.1
         dt = 0.1
         loss_fn = mean_diff_loss
@@ -188,7 +194,7 @@ class TestTwoStepSimulation:
             lr=learning_rate, 
         )
 
-        oldparams = [p.detach().numpy().copy() for p in model.parameters()]
+        oldparams = [p.detach().cpu().numpy().copy() for p in model.parameters()]
 
         train_model(
             model, dt, loss_fn, optimizer,
@@ -202,7 +208,7 @@ class TestTwoStepSimulation:
 
         self._remove_files(OUTDIR, 'tmp_model')
         
-        newparams = [p.detach().numpy().copy() for p in model.parameters()]
+        newparams = [p.detach().cpu().numpy().copy() for p in model.parameters()]
 
         if len(newparams) != 4:
             msg = "Bad length for parameters after training 1 epoch. " + \
@@ -233,7 +239,7 @@ class TestTwoStepSimulation:
             newparam_act = newparams[i]
             newparam_exp = oldparam_act - learning_rate * batch_grad_avgs[i]
             params_after_1_epoch.append(newparam_exp)
-            if not np.allclose(newparam_exp, newparam_act):
+            if not np.allclose(newparam_exp, newparam_act, atol=atol):
                 msg = f"Error in w{i}:\nExpected:\n{newparam_exp}\nGot:\n{newparam_act}"
                 errors1.append(msg)
         
@@ -256,7 +262,7 @@ class TestTwoStepSimulation:
 
         self._remove_files(OUTDIR, 'tmp_model')
 
-        newparams = [p.detach().numpy().copy() for p in model2.parameters()]
+        newparams = [p.detach().cpu().numpy().copy() for p in model2.parameters()]
         
         if len(newparams) != 4:
             msg = "Bad length for parameters after training 2 epochs. " + \
@@ -285,7 +291,7 @@ class TestTwoStepSimulation:
             oldparam_act = params_after_1_epoch[i]
             newparam_act = newparams[i]
             new_param_exp = oldparam_act - learning_rate * batch_grad_avgs[i]
-            if not np.allclose(new_param_exp, newparam_act):
+            if not np.allclose(new_param_exp, newparam_act, atol=atol):
                 msg = f"Error in w{i}:\nExpected:\n{new_param_exp}\nGot:\n{newparam_act}"
                 errors2.append(msg)
 

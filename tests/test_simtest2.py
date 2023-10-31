@@ -47,9 +47,11 @@ OUTDIR = "tests/simtest2/tmp_out"
 ###############################################################################
 
 
-@pytest.mark.parametrize('device, dtype', [
-    ['cpu', torch.float32], 
-    ['cpu', torch.float64], 
+@pytest.mark.parametrize('device, dtype, atol', [
+    ['cpu', torch.float32, 1e-4], 
+    ['cpu', torch.float64, 1e-6], 
+    ['cuda', torch.float32, 1e-4], 
+    ['cuda', torch.float64, 1e-6], 
     # ['mps', torch.float32], # ERRORS because of bug in pytorch?
 ])
 @pytest.mark.parametrize('batch_size, batch_sims, final_ws_exp', [
@@ -109,8 +111,10 @@ class TestTraining:
         for filename in glob.glob(f"{outdir}/{name}*"):
             os.remove(filename) 
     
-    def test_1_epoch_train_2_batch(self, device, dtype, 
+    def test_1_epoch_train_2_batch(self, device, dtype, atol,
                                       batch_size, batch_sims, final_ws_exp):
+        if device == 'cuda' and not torch.cuda.is_available(): 
+            pytest.skip("cuda not available")
         learning_rate = 0.1
         dt = 0.1
         loss_fn = mean_diff_loss
@@ -124,7 +128,7 @@ class TestTraining:
             lr=learning_rate, 
         )
 
-        oldparams = [p.detach().numpy().copy() for p in model.parameters()]
+        oldparams = [p.detach().cpu().numpy().copy() for p in model.parameters()]
 
         train_model(
             model, dt, loss_fn, optimizer,
@@ -138,7 +142,7 @@ class TestTraining:
 
         self._remove_files(OUTDIR, 'tmp_model')
 
-        newparams = [p.detach().numpy().copy() for p in model.parameters()]
+        newparams = [p.detach().cpu().numpy().copy() for p in model.parameters()]
 
         if len(newparams) != 4:
             msg = "Bad length for parameters after training 1 epoch. " + \
@@ -149,7 +153,7 @@ class TestTraining:
             oldparam_act = oldparams[i]
             newparam_act = newparams[i]
             newparam_exp = final_ws_exp[i]
-            if not np.allclose(newparam_exp, newparam_act):
+            if not np.allclose(newparam_exp, newparam_act, atol=atol):
                 msg = f"Error in w{i}:\nExpected:\n{newparam_exp}\nGot:\n{newparam_act}"
                 errors1.append(msg)
 
