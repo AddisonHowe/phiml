@@ -7,6 +7,7 @@ scripts/
 tests/simtest1/tmp_out/*
 tests/simtest2/tmp_out/*
 **/.DS_Store
+delme.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
