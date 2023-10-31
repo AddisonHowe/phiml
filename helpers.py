@@ -75,5 +75,7 @@ def kl_divergence_est(q_samp, p_samp):
     
     r = torch.kthvalue(diffs_xx, 2, dim=1)[0]
     s = torch.kthvalue(diffs_xy, 1, dim=1)[0]
-
-    return torch.mean(-torch.log(r/s).sum(axis=1) * d/n + np.log(m/(n-1.)))
+    print("r:", r.min().item(), r.max().item())
+    print("s:", s.min().item(), s.max().item())
+    vals = -torch.log(r/s).sum(axis=1) * d/n + np.log(m/(n-1.))
+    return torch.mean(vals)
