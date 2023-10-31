@@ -67,24 +67,24 @@ class PhiNN(nn.Module):
                 nn.Linear(3, 1, bias=False),
             )
         else:
-            layer_list = [nn.Linear(ndim, hidden_dims[0])]
+            layer_list = [nn.Linear(ndim, hidden_dims[0], dtype=self.dtype)]
             if layer_normalize:
                 layer_list.append(nn.LayerNorm([hidden_dims[0]]))
             layer_list.append(activation1())
 
             for i in range(len(hidden_dims) - 1):
-                layer_list.append(nn.Linear(hidden_dims[i], hidden_dims[i+1]))
+                layer_list.append(nn.Linear(hidden_dims[i], hidden_dims[i+1], dtype=self.dtype))
                 if layer_normalize:
                     layer_list.append(nn.LayerNorm([hidden_dims[i+1]]))
                 layer_list.append(activation1())
             
-            layer_list.append(nn.Linear(hidden_dims[-1], 1))
+            layer_list.append(nn.Linear(hidden_dims[-1], 1, dtype=self.dtype))
 
             self.phi_nn = nn.Sequential(*layer_list)
 
         # Tilt Neural Network: Linear tilt values. Maps nsigs to ndims.
         self.tilt_nn = nn.Sequential(
-            nn.Linear(self.nsig, self.ndim, bias=include_signal_bias)
+            nn.Linear(self.nsig, self.ndim, bias=include_signal_bias, dtype=self.dtype)
         )
 
         if init_weights:
@@ -117,11 +117,6 @@ class PhiNN(nn.Module):
         Returns:
             tensor of shape (k, ndim,)
         """
-        t1 = self.grad_phi(t, y)
-        t2 = self.grad_tilt(t, sig_params)[:,None,:]
-        print(t1.min(), t1.max())
-        assert not torch.any(torch.isnan(t1)), print("t1:\n", t1)
-        assert not torch.any(torch.isnan(t2)), print("t2:\n", t2)
         return -(self.grad_phi(t, y) + self.grad_tilt(t, sig_params)[:,None,:])
 
     def g(self, t, y):
@@ -182,7 +177,6 @@ class PhiNN(nn.Module):
         """
         fval = self.f(t, y, params)
         gval = self.g(t, y)
-        # assert not (torch.any(torch.isnan(fval)) or torch.any(torch.isnan(gval))), f"{gval}\n{fval}\n{y}"
         return y + fval * dt + gval * dw
     
     def forward(self, x, dt=1e-3):
@@ -237,8 +231,6 @@ class PhiNN(nn.Module):
             if self.testing and (self.testing_dw is not None):
                 dw[:] = self.testing_dw
             y = self.step(ts, y, sigparams, dt, dw)
-            print(i, y.min(), y.max())
-            # assert not torch.any(torch.isnan(y)), f"NAN at iter {i}, t={ts}, y:\n{y}"
             ts += dt
             if history:
                 y_hist.append(y.detach().numpy())
