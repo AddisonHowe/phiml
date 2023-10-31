@@ -70,12 +70,13 @@ def kl_divergence_est(q_samp, p_samp):
     _, n, d = p_samp.shape
     _, m, _ = q_samp.shape
     
-    diffs_xx = torch.cdist(p_samp, p_samp, p=2)  # (b,n,n)
-    diffs_xy = torch.cdist(q_samp, p_samp, p=2)  # (b,m,n)
+    diffs_xx = torch.cdist(p_samp, p_samp, p=2, 
+                           compute_mode='donot_use_mm_for_euclid_dist')  
+    diffs_xy = torch.cdist(q_samp, p_samp, p=2, 
+                           compute_mode='donot_use_mm_for_euclid_dist')
     
     r = torch.kthvalue(diffs_xx, 2, dim=1)[0]
     s = torch.kthvalue(diffs_xy, 1, dim=1)[0]
-    print("r:", r.min().item(), r.max().item())
-    print("s:", s.min().item(), s.max().item())
+
     vals = -torch.log(r/s).sum(axis=1) * d/n + np.log(m/(n-1.))
     return torch.mean(vals)

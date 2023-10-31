@@ -46,7 +46,6 @@ def train_model(model, dt, loss_fn, optimizer,
         # Make sure gradient tracking is on, and do a pass over the data
         model.train(True)
         if verbosity >  1: disp_mem_usage("PRE TRAIN")
-        print(model.get_sigma())
         avg_tloss = train_one_epoch(
             epoch, model, dt, loss_fn, optimizer, 
             train_dataloader,
@@ -118,9 +117,6 @@ def train_one_epoch(epoch_idx, model, dt, loss_fn, optimizer,
         # Evolve forward to get predicted state
         x1_pred = model(input.to(device), dt=dt)
         if verbosity >  1: disp_mem_usage('c')
-
-        if torch.any(torch.isnan(x1_pred)):
-            print("Encountered nan")
 
         # Compute loss and its gradients
         loss = loss_fn(x1_pred, x1.to(device))
