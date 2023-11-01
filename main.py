@@ -15,7 +15,6 @@ from helpers import select_device, jump_function, mean_cov_loss, kl_divergence_e
 
 def parse_args(args):
     parser = argparse.ArgumentParser()
-    parser = argparse.ArgumentParser()
     parser.add_argument('-o', '--outdir', type=str, 
                         default="out/model_training")
     parser.add_argument('--name', type=str, default="model")

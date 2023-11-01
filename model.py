@@ -57,7 +57,9 @@ class PhiNN(nn.Module):
                 self.sigma = torch.tensor(sigma, dtype=self.dtype, device=device)
 
         # Potential Neural Network: Maps ndims to a scalar. 
-        activation1 = nn.Tanh if testing else nn.Softplus
+        # activation1 = nn.Tanh if testing else nn.Softplus
+        activation1 = nn.Tanh if testing else nn.ELU
+        activation_final = None if testing else nn.Softplus
         if testing:
             self.phi_nn = nn.Sequential(
                 nn.Linear(ndim, 3, bias=False),
@@ -79,6 +81,9 @@ class PhiNN(nn.Module):
                 layer_list.append(activation1())
             
             layer_list.append(nn.Linear(hidden_dims[-1], 1, dtype=self.dtype))
+            
+            if activation_final:
+                layer_list.append(activation_final())
 
             self.phi_nn = nn.Sequential(*layer_list)
 
@@ -244,14 +249,16 @@ class PhiNN(nn.Module):
         # Weight initialization for Phi
         for layer in self.phi_nn:
             if isinstance(layer, nn.Linear):
-                nn.init.normal_(layer.weight, mean=0, std=0.1)
-                nn.init.constant_(layer.bias, 0)
+                # nn.init.normal_(layer.weight, mean=0, std=0.1)
+                nn.init.xavier_uniform_(layer.weight)
+                nn.init.constant_(layer.bias, 0.01)
         # Weight initialization for Tilt
         for layer in self.tilt_nn:
             if isinstance(layer, nn.Linear):
-                nn.init.normal_(layer.weight, mean=0, std=0.1)
+                # nn.init.normal_(layer.weight, mean=0, std=0.1)
+                nn.init.xavier_uniform_(layer.weight)
                 if include_signal_bias:
-                    nn.init.constant_(layer.bias, 0)
+                    nn.init.constant_(layer.bias, 0.01)
         # Weight initialization for Sigma
         # if self.infer_noise:
         #     nn.init.constant_(self.logsigma, self)
