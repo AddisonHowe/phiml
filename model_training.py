@@ -5,7 +5,7 @@
 import sys, time
 import numpy as np
 import torch
-from datetime import datetime
+
 from helpers import disp_mem_usage
 
 
@@ -32,8 +32,7 @@ def train_model(model, dt, loss_fn, optimizer,
 
     np.savetxt(f"{outdir}/ncells.txt", [model.get_ncells()])
     np.savetxt(f"{outdir}/sigma.txt", [model.get_sigma()])
-
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    
     time0 = time.time()
 
     best_vloss = 1_000_000
@@ -76,7 +75,7 @@ def train_model(model, dt, loss_fn, optimizer,
         # Track best performance, and save the model's state
         if avg_vloss < best_vloss:
             best_vloss = avg_vloss
-            model_path = f"{outdir}/{model_name}_{timestamp}_{epoch}"
+            model_path = f"{outdir}/{model_name}_{epoch}.pth"
             print("Saving model.")
             torch.save(model.state_dict(), model_path)
         

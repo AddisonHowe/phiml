@@ -4,6 +4,7 @@
 
 import os, sys
 import argparse
+from datetime import datetime
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -44,6 +45,9 @@ def parse_args(args):
 
     parser.add_argument('--continuation', type=str, default=None)
     parser.add_argument('--seed', type=int, default=0)
+
+    parser.add_argument('--no_timestamp', action="store_false")
+
     return parser.parse_args(args)
 
 
@@ -82,6 +86,10 @@ def main(args):
     
     rng = np.random.default_rng(seed=seed)
     torch.manual_seed(int(rng.integers(100000, 2**32)))
+
+    if not args.no_timestamp:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        outdir = outdir + "_" + timestamp
 
     train_dataset = LandscapeSimulationDataset(
         datdir_train, nsims_train, ndims, 
