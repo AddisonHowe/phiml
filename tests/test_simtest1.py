@@ -52,7 +52,8 @@ OUTDIR = "tests/simtest1/tmp_out"
     ['cpu', torch.float64, 1e-6], 
     ['cuda', torch.float32, 1e-4], 
     ['cuda', torch.float64, 1e-6], 
-    # ['mps', torch.float32], # ERRORS because of bug in pytorch?
+    ['mps', torch.float32, 1e-4],
+    # ['mps', torch.float64, 1e-6],  # mps does not support float64
 ])
 @pytest.mark.parametrize('batch_size, batch_sims', [
     [4, [['sim0', 'sim1', 'sim2', 'sim3']]],  # train over all 4 in one batch
@@ -108,8 +109,10 @@ class TestTwoStepSimulation:
     
     def test_1_epoch_train_full_batch(self, device, dtype, atol, 
                                       batch_size, batch_sims):
-        if device == 'cuda' and not torch.cuda.is_available(): 
+        if device == 'cuda' and not torch.cuda.is_available():
             pytest.skip("cuda not available")
+        if device == 'mps' and 'mps' not in dir(torch.backends):
+            pytest.skip("mps not available")
         learning_rate = 0.1
         dt = 0.1
         loss_fn = mean_diff_loss
@@ -178,8 +181,10 @@ class TestTwoStepSimulation:
 
     def test_2_epoch_train_full_batch(self, device, dtype, atol, 
                                       batch_size, batch_sims):
-        if device == 'cuda' and not torch.cuda.is_available(): 
+        if device == 'cuda' and not torch.cuda.is_available():
             pytest.skip("cuda not available")
+        if device == 'mps' and 'mps' not in dir(torch.backends):
+            pytest.skip("mps not available")
         learning_rate = 0.1
         dt = 0.1
         loss_fn = mean_diff_loss
