@@ -67,8 +67,8 @@ def parse_args(args):
     
     # Misc. options
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--no_timestamp', action="store_false",
-                        help="Suppress addition of timestamp to out directory.")
+    parser.add_argument('--timestamp', action="store_true",
+                        help="Add timestamp to out directory.")
 
     return parser.parse_args(args)
 
@@ -109,7 +109,7 @@ def main(args):
     if cont_path: 
         print(f"Continuing training of model {cont_path}")
     
-    if not args.no_timestamp:
+    if args.timestamp:
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         outdir = outdir + "_" + timestamp
 
@@ -234,14 +234,14 @@ def select_optimizer(model, optimization_method, args):
 def log_args(outdir, args):
     with open(f"{outdir}/log_args.txt", 'w') as f:
         for arg, value in sorted(vars(args).items()):
-            f.write(str(arg) + " : " + "%r" % value)
+            f.write(str(arg) + " : " + "%r" % value + "\n")
 
 def log_model(outdir, model):
     np.savetxt(f"{outdir}/ncells.txt", [model.get_ncells()])
     np.savetxt(f"{outdir}/sigma.txt", [model.get_sigma()])
     with open(f"{outdir}/log_model.txt", 'w') as f:
         for arg, value in sorted(vars(model).items()):
-            f.write(str(arg) + " : " + "%r" % value)
+            f.write(str(arg) + " : " + "%r" % value + "\n")
 
 if __name__ == "__main__":
     args = parse_args(sys.argv[1:])

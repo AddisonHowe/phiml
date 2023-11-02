@@ -31,6 +31,7 @@ def train_model(model, dt, loss_fn, optimizer,
     #~~~~~~~~~~~~  process kwargs  ~~~~~~~~~~~~#
     model_name = kwargs.get('model_name', 'model')
     outdir = kwargs.get('outdir', 'out')
+    plot_phi = kwargs.get('plot_phi', False)
     verbosity = kwargs.get('verbosity', 1)
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
@@ -79,6 +80,11 @@ def train_model(model, dt, loss_fn, optimizer,
             model_path = f"{outdir}/{model_name}_{epoch}.pth"
             print("Saving model.")
             torch.save(model.state_dict(), model_path)
+        
+        # Plotting, if specified
+        if plot_phi:
+            model.plot_phi()
+
         
     time1 = time.time()
     print(f"Finished training in {time1-time0:.3f} seconds.")
