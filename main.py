@@ -134,7 +134,7 @@ def main(args):
         dtype=dtype,
         sample_cells=True,
         rng=rng,
-    ).to(device)
+    ).to(device, dtype=dtype)
 
     if cont_path:
         model.load_state_dict(
