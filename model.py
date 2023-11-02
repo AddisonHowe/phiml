@@ -2,7 +2,9 @@
 
 """
 
+import warnings
 import numpy as np
+import matplotlib.pyplot as plt
 import torch
 from torch import nn
 from torch.autograd.functional import jacobian as jacobian
@@ -331,6 +333,124 @@ class PhiNN(nn.Module):
                     layer.weight = torch.nn.Parameter(w)
                     count += 1
     
+    ########################
+    ##  Plotting Methods  ##
+    ########################
+
+    def plot_phi(self, r=4, res=50, plot3d=False, **kwargs):
+        """Plot the scalar function phi.
+        Args:
+            ...
+        Returns:
+            axis object
+        """
+        #~~~~~~~~~~~~  process kwargs  ~~~~~~~~~~~~#
+        normalize = kwargs.get('normalize', True)
+        log_normalize = kwargs.get('log_normalize', True)
+        ax = kwargs.get('ax', None)
+        figsize = kwargs.get('figsize', (6, 4))
+        xlims = kwargs.get('xlims', None)
+        ylims = kwargs.get('ylims', None)
+        xlabel = kwargs.get('xlabel', "$x$")
+        ylabel = kwargs.get('ylabel', "$y$")
+        zlabel = kwargs.get('zlabel', "$\\phi$")
+        title = kwargs.get('title', "$\\phi(x,y)$")
+        cmap = kwargs.get('cmap', 'coolwarm')
+        include_cbar = kwargs.get('include_cbar', True)
+        cbar_title = kwargs.get('cbar_title', 
+                                "$\\ln\\phi$" if log_normalize else "$\\phi$")
+        cbar_titlefontsize = kwargs.get('cbar_titlefontsize', 10)
+        cbar_ticklabelsize = kwargs.get('cbar_ticklabelsize', 8)
+        saveas = kwargs.get('saveas', None)
+        show = kwargs.get('show', False)
+        #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+        if self.training:
+            warnings.warn("Not plotting. Currently training=True.")
+            return
+        if ax is None and plot3d:
+            fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+        elif ax is None and (not plot3d):
+            fig, ax = plt.subplots(1, 1, figsize=figsize)
+        
+        # Compute phi
+        x = np.linspace(-r, r, res)
+        y = np.linspace(-r, r, res)
+        xs, ys = np.meshgrid(x, y)
+        z = np.array([xs.flatten(), ys.flatten()]).T
+        z = torch.tensor([z], requires_grad=True, 
+                         dtype=torch.float32, device=self.device)
+        phi = self.phi(z).detach().cpu().numpy()  # move to cpu
+        
+        # Normalization
+        if normalize:
+            phi = 1 + phi - phi.min()  # set minimum to 1
+        if log_normalize:
+            phi = np.log(phi)
+
+        # Plot phi
+        if plot3d:
+            sc = ax.plot_surface(xs, ys, phi.reshape(xs.shape), cmap=cmap)
+        else:
+            sc = ax.pcolormesh(
+                xs, ys, phi.reshape(xs.shape),
+                cmap=cmap, 
+                vmin=phi.min(), vmax=phi.max()
+            )
+        # Colorbar
+        if include_cbar:
+            cbar = plt.colorbar(sc)
+            cbar.ax.set_title(cbar_title, size=cbar_titlefontsize)
+            cbar.ax.tick_params(labelsize=cbar_ticklabelsize)
+        
+        # Format plot
+        if xlims is not None: ax.set_xlim(*xlims)
+        if ylims is not None: ax.set_ylim(*ylims)
+        ax.set_title(title)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        if plot3d: 
+            ax.set_zlabel(zlabel)
+            ax.view_init(30, -45)
+        plt.tight_layout()
+        
+        # Save and close
+        if saveas: plt.savefig(saveas, bbox_inches='tight')
+        if not show: plt.close()
+        return ax
+    
+    def plot_f(self, signal=0, r=4, res=50, **kwargs):
+        """Plot the vector field f.
+        Args:
+            ...
+        Returns:
+            axis object
+        """
+        #~~~~~~~~~~~~  process kwargs  ~~~~~~~~~~~~#
+        ax = kwargs.get('ax', None)
+        figsize = kwargs.get('figsize', (6, 4))
+        xlims = kwargs.get('xlims', None)
+        ylims = kwargs.get('ylims', None)
+        saveas = kwargs.get('saveas', None)
+        show = kwargs.get('show', False)
+        #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+        if self.training:
+            warnings.warn("Not plotting. Currently training=True.")
+            return
+        if ax is None: fig, ax = plt.subplots(1, 1, figsize=figsize)
+        
+        # Plot f
+        raise NotImplementedError()
+        
+        # Format plot
+        if xlims is not None: ax.set_xlim(*xlims)
+        if ylims is not None: ax.set_ylim(*ylims)
+        plt.tight_layout()
+        
+        # Save and close
+        if saveas: plt.savefig(saveas, bbox_inches='tight')
+        if not show: plt.close()
+        return ax
+
     ######################
     ##  Helper Methods  ##
     ######################

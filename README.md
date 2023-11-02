@@ -10,7 +10,7 @@
 ## Ideas
 
 * How to handle noise.
-* Infer noise parameter.
+* Infer noise parameter. (Completed-ish)
 * Incorporate the number of desired fixed points
 * Precompute summary stat for $x_1$ data
 * Adjoint method.
@@ -20,7 +20,35 @@
 * Customizable layer architecture
 * batch normalization and dropout
 * Autocorrelation time of individual cells to determine transitioning flag. 
-* Softmax activation prevents super-linear growth in the potential function.
+* Softmax activation prevents super-linear growth in the potential function?
 * Normalize data beforehand?
+
+# Installation
+For the CPU:
+```bash
+mamba create -p <env-path> python=3.8 pytorch=1.11 numpy=1.24 matplotlib= 3.7 pytest=7.4 tqdm ipykernel ipywidgets
+```
+
+For the GPU, specifying cuda toolkit 11.2:
+```bash
+mamba create -p <env-path> python=3.8 pytorch=1.11[build=cuda112*] numpy=1.24 matplotlib= 3.7 pytest=7.4 tqdm ipykernel ipywidgets
+```
+
+For M1 Macs, where we want the MPS device:
+```bash
+mamba create -p <env-path> python=3.8 pytorch=2.1 numpy=1.24 matplotlib= 3.7 pytest=7.4 tqdm ipykernel ipywidgets
+mamba activate <env-path>
+mamba install -c pytorch pytorch=2.1 torchvision
+```
+
+# Usage
+
+### Main training script
+
+### Notebooks
+
+### Testing
+
+### Benchmarking
 
 # References

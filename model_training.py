@@ -1,13 +1,11 @@
-"""Model training functions.
+"""Model training.
 
 """
 
 import sys, time
 import numpy as np
 import torch
-
 from helpers import disp_mem_usage
-
 
 def train_model(model, dt, loss_fn, optimizer, 
                 train_dataloader, validation_dataloader, 
@@ -83,8 +81,44 @@ def train_model(model, dt, loss_fn, optimizer,
         
         # Plotting, if specified
         if plot_phi:
-            model.plot_phi()
-
+            plot_radius = 8
+            plot_res = 50
+            model.plot_phi(
+                r=plot_radius, res=plot_res, plot3d=False,
+                normalize=False, log_normalize=False,
+                title=f"$\phi$ (Epoch {epoch})",
+                saveas=f"{outdir}/images/phi_heatmap_{epoch}.png",
+            )
+            model.plot_phi(
+                r=plot_radius, res=plot_res, plot3d=True,
+                normalize=False, log_normalize=False,
+                title=f"$\phi$ (Epoch {epoch})",
+                saveas=f"{outdir}/images/phi_landscape_{epoch}.png",
+            )
+            model.plot_phi(
+                r=plot_radius, res=plot_res, plot3d=False,
+                normalize=True, log_normalize=False,
+                title=f"$\phi$ (Epoch {epoch})",
+                saveas=f"{outdir}/images/normphi_heatmap_{epoch}.png",
+            )
+            model.plot_phi(
+                r=plot_radius, res=plot_res, plot3d=True,
+                normalize=True, log_normalize=False,
+                title=f"$\phi$ (Epoch {epoch})",
+                saveas=f"{outdir}/images/normphi_landscape_{epoch}.png",
+            )
+            model.plot_phi(
+                r=plot_radius, res=plot_res, plot3d=False,
+                normalize=True, log_normalize=True,
+                title=f"$\phi$ (Epoch {epoch})",
+                saveas=f"{outdir}/images/logphi_heatmap_{epoch}.png",
+            )
+            model.plot_phi(
+                r=plot_radius, res=plot_res, plot3d=True,
+                normalize=True, log_normalize=True,
+                title=f"$\phi$ (Epoch {epoch})",
+                saveas=f"{outdir}/images/logphi_landscape_{epoch}.png",
+            )
         
     time1 = time.time()
     print(f"Finished training in {time1-time0:.3f} seconds.")

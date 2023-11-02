@@ -66,6 +66,7 @@ def parse_args(args):
                         choices=['float32', 'float64'])
     
     # Misc. options
+    parser.add_argument('--plot', action="store_true")
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--timestamp', action="store_true",
                         help="Add timestamp to out directory.")
@@ -97,6 +98,7 @@ def main(args):
     signal_function_key = args.signal_function
     seed = args.seed
     dtype = torch.float32 if args.dtype == 'float32' else torch.float64
+    do_plot = args.plot
 
     device = select_device() if use_gpu else 'cpu'
     print(f"Using device: {device}")
@@ -143,6 +145,8 @@ def main(args):
     optimizer = select_optimizer(model, optimization_method, args)
     
     os.makedirs(outdir, exist_ok=True)
+    if do_plot:
+        os.makedirs(f"{outdir}/images", exist_ok=True)
 
     log_args(outdir, args)
     log_model(outdir, model)
@@ -155,6 +159,7 @@ def main(args):
         device=device,
         model_name=model_name,
         outdir=outdir,
+        plot_phi=do_plot,
     )
 
 def get_dataloaders(datdir_train, datdir_valid, nsims_train, nsims_valid, 
