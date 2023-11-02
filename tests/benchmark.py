@@ -69,9 +69,10 @@ class TestBenchmarkModel:
         ).to(device)
         return model
 
-    @pytest.mark.parametrize('batch_size', [2])
-    @pytest.mark.parametrize('loss_fn', [mean_cov_loss])
-    def test_benchmark_forward(self, device, dtype, infer_noise, batch_size, loss_fn):
+    @pytest.mark.parametrize('batch_size', [2, 4, 8])
+    @pytest.mark.parametrize('loss_fn', [mean_cov_loss, kl_divergence_est])
+    def test_benchmark_forward(self, device, dtype, infer_noise, 
+                               batch_size, loss_fn):
         model = self._get_model(device, dtype, infer_noise)
         train_loader, _ = get_data_loaders(dtype, batch_size)
         inputs, x1 = next(iter(train_loader))
@@ -89,17 +90,4 @@ class TestBenchmarkModel:
                 loss.backward()
     
         print(prof.key_averages(group_by_stack_n=5).table(
-            sort_by='self_cpu_time_total', row_limit=10))
-
-    # @pytest.mark.parametrize('batch_size', [16])
-    # def test_benchmark_f(self, device, dtype, batch_size):
-    #     model = self._get_model(device, dtype)
-    #     train_loader, _ = get_data_loaders(dtype, batch_size)
-    #     inputs, x1 = next(iter(train_loader))
-    #     model(inputs, dt=1e-1)  # warm-up
-    #     with profiler.profile(profile_memory=False) as prof:
-    #         out = model(inputs)
-        
-    #     print(prof.key_averages(group_by_stack_n=5).table(
-    #         sort_by='self_cpu_time_total', row_limit=10))
-
+              sort_by='self_cpu_time_total', row_limit=10))

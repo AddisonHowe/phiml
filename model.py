@@ -33,6 +33,8 @@ class PhiNN(nn.Module):
         dtype = kwargs.get('dtype', torch.float32)
         rng = kwargs.get('rng', np.random.default_rng())
         hidden_dims = kwargs.get('hidden_dims', [16, 32, 32, 16])
+        hidden_acts = kwargs.get('hidden_acts', 4 * [nn.ELU])
+        final_act = kwargs.get('final_act', nn.Softplus)
         layer_normalize = kwargs.get('layer_normalize', False)
         #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
         
@@ -50,48 +52,43 @@ class PhiNN(nn.Module):
         self.testing = testing
         self.testing_dw = testing_dw
 
+        # Potential Network hidden layer specifications
+        if hidden_acts is None:
+            hidden_acts = [None] * len(hidden_dims)
+        elif isinstance(hidden_acts, list):
+            assert len(hidden_acts) == len(hidden_dims), \
+                f"Number of activation functions must match number of " + \
+                f"hidden layers. Got activations {hidden_acts} for " + \
+                f"{len(hidden_dims)} hidden layers."
+        elif isinstance(hidden_acts, type):
+            hidden_acts = [hidden_acts] * len(hidden_dims)
+        else:
+            msg = f"Cannot handle hidden_acts input: {hidden_acts}"
+            raise RuntimeError(msg)
+        self.hidden_dims = hidden_dims
+        self.hidden_acts = hidden_acts
+        self.final_act = final_act  # final activation function
+        
+        # Noise inference or constant
         if self.infer_noise:
             self.logsigma = torch.nn.Parameter(torch.tensor(np.log(sigma)))
         else:
             if self.device != 'cpu':
-                self.sigma = torch.tensor(sigma, dtype=self.dtype, device=device)
+                self.sigma = torch.tensor(sigma, dtype=self.dtype, 
+                                          device=device)
 
-        # Potential Neural Network: Maps ndims to a scalar. 
-        # activation1 = nn.Tanh if testing else nn.Softplus
-        activation1 = nn.Tanh if testing else nn.ELU
-        activation_final = None if testing else nn.Softplus
-        if testing:
-            self.phi_nn = nn.Sequential(
-                nn.Linear(ndim, 3, bias=False),
-                activation1(),
-                nn.Linear(3, 3, bias=False),
-                activation1(),
-                nn.Linear(3, 1, bias=False),
-            )
-        else:
-            layer_list = [nn.Linear(ndim, hidden_dims[0], dtype=self.dtype)]
-            if layer_normalize:
-                layer_list.append(nn.LayerNorm([hidden_dims[0]]))
-            layer_list.append(activation1())
-
-            for i in range(len(hidden_dims) - 1):
-                layer_list.append(nn.Linear(hidden_dims[i], hidden_dims[i+1], dtype=self.dtype))
-                if layer_normalize:
-                    layer_list.append(nn.LayerNorm([hidden_dims[i+1]]))
-                layer_list.append(activation1())
-            
-            layer_list.append(nn.Linear(hidden_dims[-1], 1, dtype=self.dtype))
-            
-            if activation_final:
-                layer_list.append(activation_final())
-
-            self.phi_nn = nn.Sequential(*layer_list)
-
+        # Potential Neural Network: Maps ndims to a scalar.
+        self.phi_nn = self._construct_phi_nn(
+            hidden_dims, hidden_acts, final_act, 
+            layer_normalize, testing=testing
+        )
+        
         # Tilt Neural Network: Linear tilt values. Maps nsigs to ndims.
-        self.tilt_nn = nn.Sequential(
-            nn.Linear(self.nsig, self.ndim, bias=include_signal_bias, dtype=self.dtype)
+        self.tilt_nn = self._construct_tilt_nn(
+            include_signal_bias=include_signal_bias
         )
 
+        # Initialize model parameters
         if init_weights:
             self.initialize_weights(
                 testing=testing, 
@@ -99,9 +96,14 @@ class PhiNN(nn.Module):
                 vals_tilt=init_weight_values_tilt,
                 include_signal_bias=include_signal_bias,
             )
-            
+        
+        # Summed version of phi for computing gradients efficiently
         self._phi_summed = lambda y : self.phi_nn(y).sum(axis=0)
 
+    ######################
+    ##  Getter Methods  ##
+    ######################
+    
     def get_ncells(self):
         if isinstance(self.ncells, torch.Tensor):
             return self.ncells.item()
@@ -113,6 +115,10 @@ class PhiNN(nn.Module):
         if isinstance(self.sigma, torch.Tensor):
             return self.sigma.item()
         return self.sigma
+
+    ##############################
+    ##  Core Landscape Methods  ##
+    ##############################
 
     def f(self, t, y, sig_params):
         """Drift term.
@@ -154,8 +160,7 @@ class PhiNN(nn.Module):
         Returns:
             tensor of shape (ndim,)
         """
-        grad = jacobian(self._phi_summed, y, create_graph=True).sum(axis=(0,1))
-        return grad
+        return jacobian(self._phi_summed, y, create_graph=True).sum(axis=(0,1))
         
     def grad_tilt(self, t, sig_params):
         """Gradient of tilt function.
@@ -167,6 +172,10 @@ class PhiNN(nn.Module):
         """
         signal_vals = self.f_signal(t, sig_params)
         return self.tilt_nn(signal_vals)
+    
+    #########################
+    ##  Evolution Methods  ##
+    #########################
 
     def step(self, t, y, params, dt, dw):
         """Take an Euler-Maruyama step.
@@ -184,31 +193,6 @@ class PhiNN(nn.Module):
         gval = self.g(t, y)
         return y + fval * dt + gval * dw
     
-    def forward(self, x, dt=1e-3):
-        """Forward pass of the model.
-
-        Args:
-            x (torch.Tensor): Model inputs. Shape (batch_size, 2+ncells+nparams)
-            dt (float, optional): Constant step size. Defaults to 1e-3.
-
-        Returns:
-            _type_: _description_
-        """
-        # Parse the inputs
-        t0 = x[...,0]
-        t1 = x[...,1]
-        y0 = x[...,2:-self.nsigparams].view([len(x), -1, self.ndim])
-        sigparams = x[...,-self.nsigparams:]
-        # Sample from the given set of cells, or use the sample directly.
-        if self.sample_cells:
-            y0 = self._sample_y0(y0)
-        
-        assert y0.shape[1] == self.ncells, \
-            f"Trying to simulate {y0.shape[1]} cells. Expected {self.ncells}."
-        
-        y0.requires_grad_()
-        return self.simulate_forward(t0, t1, y0, sigparams, dt=dt)
-
     def simulate_forward(self, t0, t1, y0, sigparams, 
                          dt=1e-3, history=False):
         """Simulate all trajectories forward in time.
@@ -241,6 +225,70 @@ class PhiNN(nn.Module):
                 y_hist.append(y.detach().numpy())
         return y if not history else (y, y_hist)
     
+    def forward(self, x, dt=1e-3):
+        """Forward pass of the model.
+
+        Args:
+            x (torch.Tensor): Model inputs. Shape (batch_size, 2+ncells+nparams)
+            dt (float, optional): Constant step size. Defaults to 1e-3.
+
+        Returns:
+            _type_: _description_
+        """
+        # Parse the inputs
+        t0 = x[...,0]
+        t1 = x[...,1]
+        y0 = x[...,2:-self.nsigparams].view([len(x), -1, self.ndim])
+        sigparams = x[...,-self.nsigparams:]
+        # Sample from the given set of cells, or use the sample directly.
+        if self.sample_cells:
+            y0 = self._sample_y0(y0)
+        
+        assert y0.shape[1] == self.ncells, \
+            f"Trying to simulate {y0.shape[1]} cells. Expected {self.ncells}."
+        
+        y0.requires_grad_()
+        return self.simulate_forward(t0, t1, y0, sigparams, dt=dt)
+    
+    ##############################
+    ##  Initialization Methods  ##
+    ##############################
+
+    def _construct_phi_nn(self, hidden_dims, hidden_acts, final_act, 
+                          layer_normalize, testing):
+        if testing:
+            return nn.Sequential(
+                nn.Linear(self.ndim, 3, bias=False),
+                nn.Tanh(),
+                nn.Linear(3, 3, bias=False),
+                nn.Tanh(),
+                nn.Linear(3, 1, bias=False),
+            )
+        
+        layer_list = [nn.Linear(self.ndim, hidden_dims[0], dtype=self.dtype)]
+        if layer_normalize:
+            layer_list.append(nn.LayerNorm([hidden_dims[0]]))
+        layer_list.append(hidden_acts[0]())
+
+        for i in range(len(hidden_dims) - 1):
+            layer_list.append(nn.Linear(hidden_dims[i], hidden_dims[i+1], 
+                                        dtype=self.dtype))
+            if layer_normalize:
+                layer_list.append(nn.LayerNorm([hidden_dims[i+1]]))
+            layer_list.append(hidden_acts[i+1]())
+        
+        layer_list.append(nn.Linear(hidden_dims[-1], 1, dtype=self.dtype))
+        
+        if final_act:
+            layer_list.append(final_act())
+
+        return nn.Sequential(*layer_list)
+    
+    def _construct_tilt_nn(self, include_signal_bias):
+        layer_list = [nn.Linear(self.nsig, self.ndim, bias=include_signal_bias, 
+                                dtype=self.dtype)]
+        return nn.Sequential(*layer_list)
+
     def initialize_weights(self, testing=False, vals_phi=None, vals_tilt=None,
                            include_signal_bias=False):
         if testing:
@@ -283,6 +331,10 @@ class PhiNN(nn.Module):
                     layer.weight = torch.nn.Parameter(w)
                     count += 1
     
+    ######################
+    ##  Helper Methods  ##
+    ######################
+
     def _sample_y0(self, y0):
         y0_samp = torch.empty([y0.shape[0], self.ncells, y0.shape[2]], 
                                dtype=self.dtype, device=self.device)
