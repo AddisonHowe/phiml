@@ -10,7 +10,11 @@ from helpers import disp_mem_usage
 
 
 def train_model(model, dt, loss_fn, optimizer, 
-                train_dataloader, validation_dataloader, **kwargs):
+                train_dataloader, validation_dataloader, 
+                num_epochs=50,
+                batch_size=1,
+                device='cpu',
+                **kwargs):
     """Train a PhiNN model.
 
     Args:
@@ -20,19 +24,16 @@ def train_model(model, dt, loss_fn, optimizer,
         optimizer (callable): ...
         train_dataloader (DataLoader): ...
         validation_dataloader (DataLoader): ...
+        num_epochs (int): Default 50.
+        batch_size (int): Default 1.
+        device (str): Default 'cpu'.
     """
     #~~~~~~~~~~~~  process kwargs  ~~~~~~~~~~~~#
-    num_epochs = kwargs.get('num_epochs', 50)
-    batch_size = kwargs.get('batch_size', 1)
-    device = kwargs.get('device', 'cpu')
     model_name = kwargs.get('model_name', 'model')
     outdir = kwargs.get('outdir', 'out')
     verbosity = kwargs.get('verbosity', 1)
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
-    np.savetxt(f"{outdir}/ncells.txt", [model.get_ncells()])
-    np.savetxt(f"{outdir}/sigma.txt", [model.get_sigma()])
-    
     time0 = time.time()
 
     best_vloss = 1_000_000
@@ -84,7 +85,10 @@ def train_model(model, dt, loss_fn, optimizer,
 
 
 def train_one_epoch(epoch_idx, model, dt, loss_fn, optimizer,
-                    dataloader, **kwargs):
+                    dataloader, 
+                    batch_size=1, 
+                    device='cpu',
+                    **kwargs):
     """One epoch of training.
 
     Args:
@@ -94,38 +98,39 @@ def train_one_epoch(epoch_idx, model, dt, loss_fn, optimizer,
         loss_fn (callable): ...
         optimizer (callable): ...
         dataloader (DataLoader): ...
+        batch_size (int): Default 1.
+        device (str): Default 'cpu'.
 
     Returns:
         float: last loss
     """
     #~~~~~~~~~~~~  process kwargs  ~~~~~~~~~~~~#
-    batch_size = kwargs.get('batch_size', 1)
-    device = kwargs.get('device', 'cpu')
-    verbosity = kwargs.get('verbosity', 1)
+    verbosity = kwargs.get('verbosity', 1)  # 0: none. 1: default. 2: debug.
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
     running_loss = 0.
     last_loss = 0.
-    for i, data in enumerate(dataloader):  # train over batches
+    # Train over batches
+    for i, data in enumerate(dataloader):
         input, x1 = data
-        if verbosity >  1: disp_mem_usage('a')
+        if verbosity > 1: disp_mem_usage('a')
 
         # Zero gradients for the batch
         optimizer.zero_grad()
-        if verbosity >  1: disp_mem_usage('b')
+        if verbosity > 1: disp_mem_usage('b')
 
         # Evolve forward to get predicted state
         x1_pred = model(input.to(device), dt=dt)
-        if verbosity >  1: disp_mem_usage('c')
+        if verbosity > 1: disp_mem_usage('c')
 
         # Compute loss and its gradients
         loss = loss_fn(x1_pred, x1.to(device))
-        if verbosity >  1: disp_mem_usage('d')
+        if verbosity > 1: disp_mem_usage('d')
         loss.backward()
-        if verbosity >  1: disp_mem_usage('e')
+        if verbosity > 1: disp_mem_usage('e')
 
         # Adjust learning weights
         optimizer.step()
-        if verbosity >  1: disp_mem_usage('f')
+        if verbosity > 1: disp_mem_usage('f')
 
         # Gather data and report
         running_loss += loss.item()
