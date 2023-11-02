@@ -86,37 +86,37 @@ def train_model(model, dt, loss_fn, optimizer,
             model.plot_phi(
                 r=plot_radius, res=plot_res, plot3d=False,
                 normalize=False, log_normalize=False,
-                title=f"$\phi$ (Epoch {epoch})",
+                title=f"$\\phi$ (Epoch {epoch})",
                 saveas=f"{outdir}/images/phi_heatmap_{epoch}.png",
             )
             model.plot_phi(
                 r=plot_radius, res=plot_res, plot3d=True,
                 normalize=False, log_normalize=False,
-                title=f"$\phi$ (Epoch {epoch})",
+                title=f"$\\phi$ (Epoch {epoch})",
                 saveas=f"{outdir}/images/phi_landscape_{epoch}.png",
             )
             model.plot_phi(
                 r=plot_radius, res=plot_res, plot3d=False,
                 normalize=True, log_normalize=False,
-                title=f"$\phi$ (Epoch {epoch})",
+                title=f"$\\phi$ (Epoch {epoch})",
                 saveas=f"{outdir}/images/normphi_heatmap_{epoch}.png",
             )
             model.plot_phi(
                 r=plot_radius, res=plot_res, plot3d=True,
                 normalize=True, log_normalize=False,
-                title=f"$\phi$ (Epoch {epoch})",
+                title=f"$\\phi$ (Epoch {epoch})",
                 saveas=f"{outdir}/images/normphi_landscape_{epoch}.png",
             )
             model.plot_phi(
                 r=plot_radius, res=plot_res, plot3d=False,
                 normalize=True, log_normalize=True,
-                title=f"$\phi$ (Epoch {epoch})",
+                title=f"$\\phi$ (Epoch {epoch})",
                 saveas=f"{outdir}/images/logphi_heatmap_{epoch}.png",
             )
             model.plot_phi(
                 r=plot_radius, res=plot_res, plot3d=True,
                 normalize=True, log_normalize=True,
-                title=f"$\phi$ (Epoch {epoch})",
+                title=f"$\\phi$ (Epoch {epoch})",
                 saveas=f"{outdir}/images/logphi_landscape_{epoch}.png",
             )
         
