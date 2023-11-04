@@ -43,6 +43,13 @@ def parse_args(args):
                         choices=['jump'], 
                         help="Identifier for the signal function.")
 
+    parser.add_argument('--hidden_dims', type=int, nargs='+', 
+                        default=[16, 32, 32, 16])
+    parser.add_argument('--hidden_acts', type=str, nargs='+', 
+                        default=4*['softplus'])
+    parser.add_argument('--final_act', type=str, default='softplus')
+    parser.add_argument('--layer_normalize', default=False)
+
     parser.add_argument('--infer_noise', action="store_true",
                         help="If specified, infer the noise level.")
     parser.add_argument('--sigma', type=float, default=1e-3,
@@ -85,6 +92,10 @@ def main(args):
     nsigs = args.nsigs
     dt = args.dt
     ncells = args.ncells
+    hidden_dims = args.hidden_dims
+    hidden_acts = args.hidden_acts
+    final_act = args.final_act
+    layer_normalize = args.layer_normalize
     infer_noise = args.infer_noise
     sigma = args.sigma
     use_gpu = args.use_gpu
@@ -128,6 +139,10 @@ def main(args):
         ndim=ndims, nsig=nsigs, 
         f_signal=f_signal, nsigparams=nsigparams,
         ncells=ncells, 
+        hidden_dims=hidden_dims,
+        hidden_acts=hidden_acts,
+        final_act=final_act,
+        layer_normalize=layer_normalize,
         infer_noise=infer_noise,
         sigma=sigma,
         device=device,

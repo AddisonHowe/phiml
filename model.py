@@ -10,6 +10,12 @@ from torch import nn
 from torch.autograd.functional import jacobian as jacobian
 
 class PhiNN(nn.Module):
+
+    _activation_keys = {
+        'softplus' : nn.Softplus,
+        'elu' : nn.ELU,
+        'tanh' : nn.Tanh,
+    }
     
     def __init__(self, ndim=2, nsig=2, f_signal=None, nsigparams=5, **kwargs):
         """
@@ -22,6 +28,10 @@ class PhiNN(nn.Module):
         super().__init__()
         #~~~~~~~~~~~~  process kwargs  ~~~~~~~~~~~~#
         ncells = kwargs.get('ncells', 100)
+        hidden_dims = kwargs.get('hidden_dims', [16, 32, 32, 16])
+        hidden_acts = kwargs.get('hidden_acts', nn.ELU)
+        final_act = kwargs.get('final_act', nn.Softplus)
+        layer_normalize = kwargs.get('layer_normalize', False)
         infer_noise = kwargs.get('infer_noise', False)
         sigma = kwargs.get('sigma', 1e-3)
         testing = kwargs.get('testing', False)
@@ -34,10 +44,6 @@ class PhiNN(nn.Module):
         sample_cells = kwargs.get('sample_cells', False)
         dtype = kwargs.get('dtype', torch.float32)
         rng = kwargs.get('rng', np.random.default_rng())
-        hidden_dims = kwargs.get('hidden_dims', [16, 32, 32, 16])
-        hidden_acts = kwargs.get('hidden_acts', 4 * [nn.ELU])
-        final_act = kwargs.get('final_act', nn.Softplus)
-        layer_normalize = kwargs.get('layer_normalize', False)
         #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
         
         self.ndim = ndim
@@ -55,21 +61,15 @@ class PhiNN(nn.Module):
         self.testing_dw = testing_dw
 
         # Potential Network hidden layer specifications
-        if hidden_acts is None:
-            hidden_acts = [None] * len(hidden_dims)
-        elif isinstance(hidden_acts, list):
-            assert len(hidden_acts) == len(hidden_dims), \
-                f"Number of activation functions must match number of " + \
-                f"hidden layers. Got activations {hidden_acts} for " + \
-                f"{len(hidden_dims)} hidden layers."
-        elif isinstance(hidden_acts, type):
-            hidden_acts = [hidden_acts] * len(hidden_dims)
-        else:
-            msg = f"Cannot handle hidden_acts input: {hidden_acts}"
-            raise RuntimeError(msg)
+
+        hidden_dims, hidden_acts, final_act = self._check_hidden_layers(
+            hidden_dims=hidden_dims, 
+            hidden_acts=hidden_acts, 
+            final_act=final_act,
+        )
         self.hidden_dims = hidden_dims
         self.hidden_acts = hidden_acts
-        self.final_act = final_act  # final activation function
+        self.final_act = final_act
         
         # Noise inference or constant
         if self.infer_noise:
@@ -256,6 +256,45 @@ class PhiNN(nn.Module):
     ##  Initialization Methods  ##
     ##############################
 
+    def _check_hidden_layers(self, hidden_dims, hidden_acts, final_act):
+        """Check the requested model architecture.
+        """
+        nlayers = len(hidden_dims)
+        # Convert singular hidden activation to a list.
+        if hidden_acts is None or isinstance(hidden_acts, (str, type)):
+            hidden_acts = [hidden_acts] * nlayers
+        # Check number of hidden activations
+        if len(hidden_acts) != nlayers:
+            msg = "Number of activation functions must match number of " + \
+                  f"hidden layers. Got {hidden_acts} for {nlayers} layers."
+            raise RuntimeError(msg)
+        # Check hidden activation types
+        for i, val in enumerate(hidden_acts):
+            if isinstance(val, str):
+                hidden_acts[i] = self._activation_keys[val.lower()]
+            elif isinstance(val, type) or val is None:
+                pass
+            else:
+                msg = f"Cannot handle activation specs: {hidden_acts}"
+                raise RuntimeError(msg)
+        # Check final activation types
+        if isinstance(final_act, str):
+            final_act = self._activation_keys[final_act.lower()]
+        elif isinstance(final_act, type) or final_act is None:
+                pass
+        else:
+            msg = f"Cannot handle final activation spec: {final_act}"
+            raise RuntimeError(msg)
+        return hidden_dims, hidden_acts, final_act
+    
+    def _add_layer(self, layer_list, din, dout, activation, normalization):
+        layer_list.append(nn.Linear(din, dout, dtype=self.dtype))
+        if normalization:
+            layer_list.append(nn.LayerNorm([dout]))
+        if activation:
+            layer_list.append(activation())
+        
+
     def _construct_phi_nn(self, hidden_dims, hidden_acts, final_act, 
                           layer_normalize, testing):
         if testing:
@@ -267,23 +306,25 @@ class PhiNN(nn.Module):
                 nn.Linear(3, 1, bias=False),
             )
         
-        layer_list = [nn.Linear(self.ndim, hidden_dims[0], dtype=self.dtype)]
-        if layer_normalize:
-            layer_list.append(nn.LayerNorm([hidden_dims[0]]))
-        layer_list.append(hidden_acts[0]())
-
+        layer_list = []
+        # Hidden layers
+        self._add_layer(
+            layer_list, self.ndim, hidden_dims[0], 
+            activation=hidden_acts[0], 
+            normalization=layer_normalize
+        )
         for i in range(len(hidden_dims) - 1):
-            layer_list.append(nn.Linear(hidden_dims[i], hidden_dims[i+1], 
-                                        dtype=self.dtype))
-            if layer_normalize:
-                layer_list.append(nn.LayerNorm([hidden_dims[i+1]]))
-            layer_list.append(hidden_acts[i+1]())
-        
-        layer_list.append(nn.Linear(hidden_dims[-1], 1, dtype=self.dtype))
-        
-        if final_act:
-            layer_list.append(final_act())
-
+            self._add_layer(
+                layer_list, hidden_dims[i], hidden_dims[i+1], 
+                activation=hidden_acts[i+1], 
+                normalization=layer_normalize
+            )
+        # Final layer
+        self._add_layer(
+            layer_list, hidden_dims[-1], 1,  
+            activation=final_act, 
+            normalization=False
+        )
         return nn.Sequential(*layer_list)
     
     def _construct_tilt_nn(self, include_signal_bias):
