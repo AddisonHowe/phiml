@@ -12,6 +12,7 @@ from torch.autograd.functional import jacobian as jacobian
 class PhiNN(nn.Module):
 
     _activation_keys = {
+        'none' : None,
         'softplus' : nn.Softplus,
         'elu' : nn.ELU,
         'tanh' : nn.Tanh,
