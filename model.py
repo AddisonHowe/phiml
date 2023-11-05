@@ -384,9 +384,28 @@ class PhiNN(nn.Module):
     def plot_phi(self, r=4, res=50, plot3d=False, **kwargs):
         """Plot the scalar function phi.
         Args:
-            ...
+            r (int) : 
+            res (int) :
+            plot3d (bool) :
+            normalize (bool) :
+            log_normalize (bool) :
+            ax (Axis) :
+            figsize (tuple[float]) :
+            xlims (tuple[float]) :
+            ylims (tuple[float]) :
+            xlabel (str) :
+            ylabel (str) :
+            zlabel (str) :
+            title (str) :
+            cmap (Colormap) :
+            include_cbar (bool) :
+            cbar_title (str) :
+            cbar_titlefontsize (int) :
+            cbar_ticklabelsize (int) :
+            saveas (str) :
+            show (bool) :
         Returns:
-            axis object
+            Axis object.
         """
         #~~~~~~~~~~~~  process kwargs  ~~~~~~~~~~~~#
         normalize = kwargs.get('normalize', True)
@@ -420,8 +439,8 @@ class PhiNN(nn.Module):
         x = np.linspace(-r, r, res)
         y = np.linspace(-r, r, res)
         xs, ys = np.meshgrid(x, y)
-        z = np.array([xs.flatten(), ys.flatten()]).T
-        z = torch.tensor([z], requires_grad=True, 
+        z = np.array([xs.flatten(), ys.flatten()]).T[None,...]
+        z = torch.tensor(z, requires_grad=True, 
                          dtype=torch.float32, device=self.device)
         phi = self.phi(z).detach().cpu().numpy()  # move to cpu
         
@@ -465,15 +484,39 @@ class PhiNN(nn.Module):
     def plot_f(self, signal=0, r=4, res=50, **kwargs):
         """Plot the vector field f.
         Args:
-            ...
+            signal (float or tuple[float]) :
+            r (int) : 
+            res (int) :
+            ax (Axis) :
+            figsize (tuple[float]) :
+            xlims (tuple[float]) :
+            ylims (tuple[float]) :
+            xlabel (str) :
+            ylabel (str) :
+            title (str) :
+            cmap (Colormap) :
+            include_cbar (bool) :
+            cbar_title (str) :
+            cbar_titlefontsize (int) :
+            cbar_ticklabelsize (int) :
+            saveas (str) :
+            show (bool) :
         Returns:
-            axis object
+            Axis object.
         """
         #~~~~~~~~~~~~  process kwargs  ~~~~~~~~~~~~#
         ax = kwargs.get('ax', None)
         figsize = kwargs.get('figsize', (6, 4))
         xlims = kwargs.get('xlims', None)
         ylims = kwargs.get('ylims', None)
+        xlabel = kwargs.get('xlabel', "$x$")
+        ylabel = kwargs.get('ylabel', "$y$")
+        title = kwargs.get('title', "$f(x,y|\\vec{s})$")
+        cmap = kwargs.get('cmap', 'coolwarm')
+        include_cbar = kwargs.get('include_cbar', True)
+        cbar_title = kwargs.get('cbar_title', "$|f|$")
+        cbar_titlefontsize = kwargs.get('cbar_titlefontsize', 10)
+        cbar_ticklabelsize = kwargs.get('cbar_ticklabelsize', 8)
         saveas = kwargs.get('saveas', None)
         show = kwargs.get('show', False)
         #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -482,12 +525,37 @@ class PhiNN(nn.Module):
             return
         if ax is None: fig, ax = plt.subplots(1, 1, figsize=figsize)
         
-        # Plot f
-        raise NotImplementedError()
+        # Initialize signal parameters TODO: don't hard-code the parameters
+        signal_params = torch.tensor([[1, *signal, *signal]], 
+                                     dtype=self.dtype, device=self.device)
+        eval_time = torch.zeros(1, dtype=self.dtype, device=self.device)
+        
+        # Compute f
+        x = np.linspace(-r, r, res)
+        y = np.linspace(-r, r, res)
+        xs, ys = np.meshgrid(x, y)
+        z = np.array([xs.flatten(), ys.flatten()]).T[None,...]
+        z = torch.tensor(z, requires_grad=True, 
+                         dtype=self.dtype, device=self.device)
+        f = self.f(eval_time, z, signal_params).detach().cpu().numpy()
+        fu, fv = f.T
+        fnorms = np.sqrt(fu**2 + fv**2)
+
+        # Plot force field, tilted by signals
+        sc = ax.quiver(xs, ys, fu/fnorms, fv/fnorms, fnorms, cmap=cmap)
+        
+        # Colorbar
+        if include_cbar:
+            cbar = plt.colorbar(sc)
+            cbar.ax.set_title(cbar_title, size=cbar_titlefontsize)
+            cbar.ax.tick_params(labelsize=cbar_ticklabelsize)
         
         # Format plot
         if xlims is not None: ax.set_xlim(*xlims)
         if ylims is not None: ax.set_ylim(*ylims)
+        ax.set_title(title)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
         plt.tight_layout()
         
         # Save and close
