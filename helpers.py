@@ -59,12 +59,14 @@ def disp_mem_usage(msg=""):
 
 def kl_divergence_est(q_samp, p_samp):
     """Estimate the KL divergence. Returns the average over all batches.
+    Adapted from:
+      https://gist.github.com/atabakd/ed0f7581f8510c8587bc2f41a094b518
 
     Args:
         q_samp : Estimated sample distribution of shape (b,m,d)
         p_samp : Target sample distribution of shape (b,n,d)
     Returns:
-        (float) KL estimate, averaged over each batch.
+        (float) KL estimate D(p|q), averaged over each batch.
     """
 
     _, n, d = p_samp.shape
