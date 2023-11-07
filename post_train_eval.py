@@ -94,6 +94,31 @@ def plot_validation_loss_history(loss_hist_valid, saveas=None):
     if saveas: plt.savefig(saveas)
     return ax
 
+def plot_loss_history(loss_hist_train, loss_hist_valid, saveas=None):
+    fig, ax = plt.subplots(1, 1)
+    ax.plot(1+np.arange(len(loss_hist_train)), loss_hist_train, 'r.-',
+            label="Training")
+    ax.plot(1+np.arange(len(loss_hist_valid)), loss_hist_valid, 'b.-',
+            label="Validation")
+    ax.set_xlabel(f"epoch")
+    ax.set_ylabel(f"loss")
+    ax.set_title(f"Loss History")
+    if saveas: plt.savefig(saveas)
+    return ax
+
+def plot_train_vs_valid_history(loss_hist_train, loss_hist_valid, saveas=None,
+                                log=True):
+    fig, ax = plt.subplots(1, 1)
+    if log:
+        ax.loglog(loss_hist_train, loss_hist_valid, '.-')
+    else:
+        ax.plot(loss_hist_train, loss_hist_valid, '.-')
+    ax.set_xlabel(f"Training loss")
+    ax.set_ylabel(f"Validation loss")
+    ax.set_title(f"Training vs Validation Loss")
+    if saveas: plt.savefig(saveas)
+    return ax
+
 model, model_args, loss_hist_train, loss_hist_valid = load_model_directory(
     modeldir, model
 )
@@ -103,10 +128,25 @@ if verbosity:
     print(f"Sigma: {np.exp(model.logsigma.item()):.4g}")
     print(f"Tilt map:\n{list(model.tilt_nn.parameters())[0].detach().numpy()}")
 
-plot_training_loss_history(loss_hist_train, 
-                           saveas=f"{outdir}/loss_hist_training.png")
-plot_validation_loss_history(loss_hist_valid,
-                             saveas=f"{outdir}/loss_hist_validation.png")
+plot_training_loss_history(
+    loss_hist_train, 
+    saveas=f"{outdir}/loss_hist_training.png"
+)
+plot_validation_loss_history(
+    loss_hist_valid,
+    saveas=f"{outdir}/loss_hist_validation.png"
+)
+plot_loss_history(
+    loss_hist_train, 
+    loss_hist_valid,
+    saveas=f"{outdir}/loss_hist.png"
+)
+plot_train_vs_valid_history(
+    loss_hist_train, 
+    loss_hist_valid, 
+    log=True,
+    saveas=f"{outdir}/loss_train_vs_valid.png"
+)
 
 model.plot_phi(
     r=3, res=100, show=True, normalize=True, log_normalize=False,

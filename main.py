@@ -174,7 +174,8 @@ def main(args):
         device=device,
         model_name=model_name,
         outdir=outdir,
-        plot_phi=do_plot,
+        plotting=do_plot,
+        plotting_opts={},  # Default plotting options
     )
 
 def get_dataloaders(datdir_train, datdir_valid, nsims_train, nsims_valid, 
@@ -212,7 +213,7 @@ def get_dataloaders(datdir_train, datdir_valid, nsims_train, nsims_valid,
     
 def get_signal_function(key):
     if key == 'jump':
-        f_signal = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
+        f_signal = lambda t,p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
         nsigparams = 5
     else:
         msg = f"Unknown signal function identifier {key}."
@@ -265,5 +266,5 @@ def log_model(outdir, model):
 
 if __name__ == "__main__":
     args = parse_args(sys.argv[1:])
-    print(args)
+    print('args:', args)
     main(args)

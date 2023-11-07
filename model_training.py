@@ -29,7 +29,8 @@ def train_model(model, dt, loss_fn, optimizer,
     #~~~~~~~~~~~~  process kwargs  ~~~~~~~~~~~~#
     model_name = kwargs.get('model_name', 'model')
     outdir = kwargs.get('outdir', 'out')
-    plot_phi = kwargs.get('plot_phi', False)
+    plotting = kwargs.get('plotting', False)
+    plotting_opts = kwargs.get('plotting_opts', {})
     verbosity = kwargs.get('verbosity', 1)
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
@@ -80,45 +81,8 @@ def train_model(model, dt, loss_fn, optimizer,
             torch.save(model.state_dict(), model_path)
         
         # Plotting, if specified
-        if plot_phi:
-            plot_radius = 8
-            plot_res = 50
-            model.plot_phi(
-                r=plot_radius, res=plot_res, plot3d=False,
-                normalize=False, log_normalize=False,
-                title=f"$\\phi$ (Epoch {epoch})",
-                saveas=f"{outdir}/images/phi_heatmap_{epoch}.png",
-            )
-            model.plot_phi(
-                r=plot_radius, res=plot_res, plot3d=True,
-                normalize=False, log_normalize=False,
-                title=f"$\\phi$ (Epoch {epoch})",
-                saveas=f"{outdir}/images/phi_landscape_{epoch}.png",
-            )
-            model.plot_phi(
-                r=plot_radius, res=plot_res, plot3d=False,
-                normalize=True, log_normalize=False,
-                title=f"$\\phi$ (Epoch {epoch})",
-                saveas=f"{outdir}/images/normphi_heatmap_{epoch}.png",
-            )
-            model.plot_phi(
-                r=plot_radius, res=plot_res, plot3d=True,
-                normalize=True, log_normalize=False,
-                title=f"$\\phi$ (Epoch {epoch})",
-                saveas=f"{outdir}/images/normphi_landscape_{epoch}.png",
-            )
-            model.plot_phi(
-                r=plot_radius, res=plot_res, plot3d=False,
-                normalize=True, log_normalize=True,
-                title=f"$\\phi$ (Epoch {epoch})",
-                saveas=f"{outdir}/images/logphi_heatmap_{epoch}.png",
-            )
-            model.plot_phi(
-                r=plot_radius, res=plot_res, plot3d=True,
-                normalize=True, log_normalize=True,
-                title=f"$\\phi$ (Epoch {epoch})",
-                saveas=f"{outdir}/images/logphi_landscape_{epoch}.png",
-            )
+        if plotting:
+            make_plots(epoch, model, outdir, plotting_opts)
         
     time1 = time.time()
     print(f"Finished training in {time1-time0:.3f} seconds.")
@@ -180,3 +144,49 @@ def train_one_epoch(epoch_idx, model, dt, loss_fn, optimizer,
             running_loss = 0.
 
     return last_loss
+
+def make_plots(epoch, model, outdir, plotting_opts):
+    """Make plots at the end of each epoch.
+    
+    Args:
+        plotting_opts (dict) : dictionary of options. Handles following keys:
+            ...
+    """
+    plot_radius = plotting_opts.get('plot_radius', 4)
+    plot_res = plotting_opts.get('plot_res', 50)
+    model.plot_phi(
+        r=plot_radius, res=plot_res, plot3d=False,
+        normalize=False, log_normalize=False,
+        title=f"$\\phi$ (Epoch {epoch})",
+        saveas=f"{outdir}/images/phi_heatmap_{epoch}.png",
+    )
+    model.plot_phi(
+        r=plot_radius, res=plot_res, plot3d=True,
+        normalize=False, log_normalize=False,
+        title=f"$\\phi$ (Epoch {epoch})",
+        saveas=f"{outdir}/images/phi_landscape_{epoch}.png",
+    )
+    model.plot_phi(
+        r=plot_radius, res=plot_res, plot3d=False,
+        normalize=True, log_normalize=False,
+        title=f"$\\phi$ (Epoch {epoch})",
+        saveas=f"{outdir}/images/normphi_heatmap_{epoch}.png",
+    )
+    model.plot_phi(
+        r=plot_radius, res=plot_res, plot3d=True,
+        normalize=True, log_normalize=False,
+        title=f"$\\phi$ (Epoch {epoch})",
+        saveas=f"{outdir}/images/normphi_landscape_{epoch}.png",
+    )
+    model.plot_phi(
+        r=plot_radius, res=plot_res, plot3d=False,
+        normalize=True, log_normalize=True,
+        title=f"$\\phi$ (Epoch {epoch})",
+        saveas=f"{outdir}/images/logphi_heatmap_{epoch}.png",
+    )
+    model.plot_phi(
+        r=plot_radius, res=plot_res, plot3d=True,
+        normalize=True, log_normalize=True,
+        title=f"$\\phi$ (Epoch {epoch})",
+        saveas=f"{outdir}/images/logphi_landscape_{epoch}.png",
+    )
