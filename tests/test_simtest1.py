@@ -93,7 +93,7 @@ class TestTwoStepSimulation:
             ncells=4, sigma=0,
             device=device,
             dtype=dtype,
-            testing=True, include_bias=False, 
+            testing=True, include_signal_bias=False, 
             init_weights=True,
             init_weight_values_phi=[W1, W2, W3],
             init_weight_values_tilt=[WT1],

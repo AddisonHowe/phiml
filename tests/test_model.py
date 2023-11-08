@@ -53,9 +53,14 @@ class TestCoreLandscapeMethods:
          [[[5.5586, 2.83997]]], (1, 1, 2)
         ],
         [[W1, W2, W3], [WT1], 
-         [[5, 0, 1, 1, -1],[5, 0, 1, 1, -1]], [0,10],  # 2 batches
+         [[5, 0, 1, 1, -1],[5, 0, 1, 1, -1]], [0, 10],  # 2 batches
          [[[0, 1]], [[0, 1]]], 
          [[[-0.441403, -0.16003]], [[5.5586, 2.83997]]], (2, 1, 2)
+        ],
+        [[W1, W2, W3], [WT1], 
+         [[5, 0, 1, 1, -1],[5, 0, 1, 1, -1]], [0, 10],  # 2 batches of 3 cells
+         [[[0, 1],[0, 1],[0, 1]], [[0, 1],[0, 1],[0, 1]]], 
+         [3*[[-0.441403, -0.16003]], 3*[[5.5586, 2.83997]]], (2, 3, 2)
         ],
     ])
     def test_f(self, eval_mode, dtype, ws, wts, sigparams, t, x, 
@@ -63,7 +68,7 @@ class TestCoreLandscapeMethods:
         sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
         model = PhiNN(
             ndim=2, nsig=2, f_signal=sigfunc, 
-            testing=True, include_bias=False, 
+            testing=True, include_signal_bias=False, 
             init_weights=True,
             init_weight_values_phi=ws,
             init_weight_values_tilt=wts,
@@ -76,8 +81,44 @@ class TestCoreLandscapeMethods:
         f_act = model.f(t, x, sigparams).detach().numpy()
         assert np.allclose(f_act, f_exp) and f_act.shape == f_shape_exp
 
-    def test_g(self, eval_mode, dtype):
-        pytest.skip()
+    @pytest.mark.parametrize('ws, wts, t, x, sigma, g_exp, g_shape_exp', [
+        [[W1, W2, W3], [WT1], [0],  # 1 batch
+         [[[0, 1]]], 0.01, 
+         [[[0.01, 0.01]]], (1, 1, 2)
+        ],
+        [[W1, W2, W3], [WT1], [10],  # 1 batch
+         [[[0, 1]]], 0.01, 
+         [[[0.01, 0.01]]], (1, 1, 2)
+        ],
+        [[W1, W2, W3], [WT1], [0, 10],  # 2 batches
+         [[[0, 1]], [[0, 1]]], 0.01, 
+         [[[0.01, 0.01]], [[0.01, 0.01]]], (2, 1, 2)
+        ],
+        [[W1, W2, W3], [WT1], 
+         [0, 10],  # 2 batches of 3 cells
+         [[[0, 1],[0, 1],[0, 1]], [[0, 1],[0, 1],[0, 1]]], 0.01, 
+         [3*[[0.01, 0.01]], 3*[[0.01, 0.01]]], (2, 3, 2)
+        ],
+    ])
+    @pytest.mark.parametrize('infer_noise', [True, False])
+    def test_g(self, eval_mode, dtype, ws, wts, t, x, 
+               sigma, infer_noise, g_exp, g_shape_exp):
+        sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
+        model = PhiNN(
+            ndim=2, nsig=2, f_signal=sigfunc, 
+            infer_noise=infer_noise,
+            sigma=sigma, 
+            testing=True, include_signal_bias=False, 
+            init_weights=True,
+            init_weight_values_phi=ws,
+            init_weight_values_tilt=wts,
+            dtype=dtype,
+        )
+        if eval_mode: model.eval()
+        t = torch.tensor(t, dtype=dtype)
+        x = torch.tensor(x, dtype=dtype, requires_grad=True)
+        g_act = model.g(t, x).detach().numpy()
+        assert np.allclose(g_act, g_exp) and g_act.shape == g_shape_exp
 
     @pytest.mark.parametrize("ws, x, phi_exp, phi_shape_exp", [
         [[W1, W2, W3], [[0, 0]], [0.0], (1, 1)],
@@ -88,14 +129,14 @@ class TestCoreLandscapeMethods:
          [[0.0],[3.9934],[2.69506],[3.24787]], (4, 1)],
         [[W1, W2, W3], 
          [[[0, 0],[0, 1],[1, 0],[1, 1]],
-          [[0, 0],[0, 1],[1, 0],[1, 1]]], 
+          [[1, 1],[0, 1],[1, 0],[0, 0]]], 
          [[[0.0],[3.9934],[2.69506],[3.24787]], 
-          [[0.0],[3.9934],[2.69506],[3.24787]]], (2, 4, 1)],
+          [[3.24787],[3.9934],[2.69506],[0.0]]], (2, 4, 1)],
     ])
     def test_phi(self, eval_mode, dtype, ws, x, phi_exp, phi_shape_exp):
         model = PhiNN(
             ndim=2, nsig=2, f_signal=None, 
-            testing=True, include_bias=False, 
+            testing=True, include_signal_bias=False, 
             init_weights=True,
             init_weight_values_phi=ws,
             dtype=dtype,
@@ -130,7 +171,7 @@ class TestCoreLandscapeMethods:
     def test_grad_phi(self, eval_mode, dtype, ws, x, grad_phi_exp, shape_exp):
         model = PhiNN(
             ndim=2, nsig=2, f_signal=None, 
-            testing=True, include_bias=False, 
+            testing=True, include_signal_bias=False, 
             init_weights=True,
             init_weight_values_phi=ws,
             dtype=dtype,
@@ -180,7 +221,7 @@ class TestCoreLandscapeMethods:
         model = PhiNN(
             ndim=2, nsig=2, f_signal=None, 
             ncells=ncells,
-            testing=True, include_bias=False, 
+            testing=True, include_signal_bias=False, 
             init_weights=True,
             init_weight_values_phi=ws,
             dtype=dtype,
@@ -196,6 +237,7 @@ class TestCoreLandscapeMethods:
         rng2 = np.random.default_rng(seed=seed)
         nbatches = x.shape[0]
         ncells_input = x.shape[1]
+        shape_exp = (nbatches, ncells, x.shape[-1])
         grad_phi_exp_shuffled = np.zeros([nbatches, ncells, x.shape[2]], 
                                          dtype=npdtype)
         
@@ -212,6 +254,10 @@ class TestCoreLandscapeMethods:
         if not np.allclose(grad_phi_exp_shuffled, grad_phi_act, atol=1e-6):
             msg = f"Value mismatch between grad phi actual and expected."
             msg += f"Expected:\n{grad_phi_exp_shuffled}\nGot:\n{grad_phi_act}"
+            errors.append(msg)
+        if not (grad_phi_act.shape == shape_exp):
+            msg = f"Shape mismatch between grad phi actual and expected."
+            msg += f"Expected {shape_exp}. Got {grad_phi_act.shape}."
             errors.append(msg)
         assert not errors, "Errors occurred:\n{}".format("\n".join(errors))
 
@@ -232,7 +278,7 @@ class TestCoreLandscapeMethods:
         sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
         model = PhiNN(
             ndim=2, nsig=2, f_signal=sigfunc, 
-            testing=True, include_bias=False, 
+            testing=True, include_signal_bias=False, 
             init_weights=True,
             init_weight_values_tilt=wts,
             dtype=dtype,
@@ -256,25 +302,25 @@ class TestCoreLandscapeMethods:
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 class TestEvolutionMethods:
 
-    @pytest.mark.parametrize('ws, wts, tcrit, p0, p1, t, dt, sigma, dw, x, x_exp', [
-        [[W1, W2, W3], [WT1], 5, [0, 1], [1, -1], 
+    @pytest.mark.parametrize('ws, wts, sigparams, t, dt, sigma, dw, x, x_exp', [
+        [[W1, W2, W3], [WT1], [[5, 0, 1, 1, -1]], 
          0,  1e-2, 1e-3, [[0.05, -0.024]], [[0, 1]], [[-0.00436403, 0.9983757]]
         ],
-        [[W1, W2, W3], [WT1], 5, [0, 1], [1, -1], 
+        [[W1, W2, W3], [WT1], [[5, 0, 1, 1, -1]], 
          10, 1e-2, 1e-3, [[0.05, -0.024]], [[0, 1]], [[0.055636, 1.0283757]]
         ],
-        [[W1, W2, W3], [WT1], 5, [0, 1], [1, -1], 
+        [[W1, W2, W3], [WT1], [[5, 0, 1, 1, -1]], 
          0, 1e-2, 1e-3, [[0.05, -0.024],[0.05, -0.024]], 
          [[0, 1], [0, 1]], [[-0.00436403, 0.9983757], [-0.00436403, 0.9983757]]
         ],
     ])
-    def test_step(self, eval_mode, dtype, ws, wts, tcrit, p0, p1, t, dt, 
+    def test_step(self, eval_mode, dtype, ws, wts, sigparams, t, dt, 
                   sigma, dw, x, x_exp):
-        sigparams = torch.tensor([[tcrit, *p0, *p1]], dtype=dtype)
+        sigparams = torch.tensor(sigparams, dtype=dtype)
         sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
         model = PhiNN(
             ndim=2, nsig=2, f_signal=sigfunc, sigma=sigma,
-            testing=True, include_bias=False, 
+            testing=True, include_signal_bias=False, 
             init_weights=True,
             init_weight_values_phi=ws,
             init_weight_values_tilt=wts,
@@ -305,7 +351,7 @@ class TestEvolutionMethods:
         sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
         model = PhiNN(
             ndim=2, nsig=2, f_signal=sigfunc, sigma=sigma, ncells=ncells,
-            testing=True, include_bias=False, 
+            testing=True, include_signal_bias=False, 
             init_weights=True,
             init_weight_values_phi=ws,
             init_weight_values_tilt=wts,
@@ -360,7 +406,7 @@ class TestNoNoise:
         sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
         model = PhiNN(
             ndim=2, nsig=2, f_signal=sigfunc, sigma=sigma, ncells=ncells,
-            testing=True, include_bias=False, 
+            testing=True, include_signal_bias=False, 
             init_weights=True,
             init_weight_values_phi=ws,
             init_weight_values_tilt=wts,
@@ -379,7 +425,7 @@ class TestNoNoise:
         sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
         model = PhiNN(
             ndim=2, nsig=2, f_signal=sigfunc, sigma=sigma, ncells=ncells,
-            testing=True, include_bias=False, 
+            testing=True, include_signal_bias=False, 
             init_weights=True,
             init_weight_values_phi=ws,
             init_weight_values_tilt=wts,
@@ -405,7 +451,7 @@ class TestNoNoise:
         sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
         model = PhiNN(
             ndim=2, nsig=2, f_signal=sigfunc, sigma=sigma, ncells=ncells,
-            testing=True, include_bias=False, 
+            testing=True, include_signal_bias=False, 
             init_weights=True,
             init_weight_values_phi=ws,
             init_weight_values_tilt=wts,
@@ -441,7 +487,7 @@ class TestNoNoise:
         sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
         model = PhiNN(
             ndim=2, nsig=2, f_signal=sigfunc, sigma=sigma, ncells=ncells,
-            testing=True, include_bias=False, 
+            testing=True, include_signal_bias=False, 
             init_weights=True,
             init_weight_values_phi=ws,
             init_weight_values_tilt=wts,

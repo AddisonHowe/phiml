@@ -4,6 +4,7 @@
 
 import warnings
 import numpy as np
+import math
 import matplotlib.pyplot as plt
 import torch
 from torch import nn
@@ -18,7 +19,29 @@ class PhiNN(nn.Module):
         'tanh' : nn.Tanh,
     }
     
-    def __init__(self, ndim=2, nsig=2, f_signal=None, nsigparams=5, **kwargs):
+    def __init__(self, 
+            ndim=2, 
+            nsig=2, 
+            f_signal=None, 
+            nsigparams=5,
+            ncells=100,
+            sample_cells=False,
+            hidden_dims=[16, 32, 32, 16],
+            hidden_acts=nn.ELU,
+            final_act=nn.Softplus,
+            layer_normalize=False,
+            infer_noise=False,
+            sigma=1e-3,
+            include_signal_bias=False,
+            init_weights=True,
+            init_weight_values_phi=None,
+            init_weight_values_tilt=None,
+            device='cpu',
+            dtype=torch.float32,
+            rng=None,
+            testing=False,
+            testing_dw=None,
+            ):
         """
         Args:
             ndim: (int) dimension of state space.
@@ -27,26 +50,6 @@ class PhiNN(nn.Module):
                 parameters to the value of each signal.
         """
         super().__init__()
-        #~~~~~~~~~~~~  process kwargs  ~~~~~~~~~~~~#
-        ncells = kwargs.get('ncells', 100)
-        hidden_dims = kwargs.get('hidden_dims', [16, 32, 32, 16])
-        hidden_acts = kwargs.get('hidden_acts', nn.ELU)
-        final_act = kwargs.get('final_act', nn.Softplus)
-        layer_normalize = kwargs.get('layer_normalize', False)
-        infer_noise = kwargs.get('infer_noise', False)
-        sigma = kwargs.get('sigma', 1e-3)
-        testing = kwargs.get('testing', False)
-        include_signal_bias = kwargs.get('include_bias', False)
-        init_weights = kwargs.get('init_weights', True)
-        init_weight_values_phi = kwargs.get('init_weight_values_phi', None)
-        init_weight_values_tilt = kwargs.get('init_weight_values_tilt', None)
-        testing_dw = kwargs.get('testing_dw', None)
-        device = kwargs.get('device', 'cpu')
-        sample_cells = kwargs.get('sample_cells', False)
-        dtype = kwargs.get('dtype', torch.float32)
-        rng = kwargs.get('rng', np.random.default_rng())
-        #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-        
         self.ndim = ndim
         self.nsig = nsig
         self.f_signal = f_signal
@@ -57,12 +60,15 @@ class PhiNN(nn.Module):
         self.device = device
         self.dtype = dtype
         self.sample_cells = sample_cells
-        self.rng = rng
+        self.rng = rng if rng else np.random.default_rng()
         self.testing = testing
         self.testing_dw = testing_dw
 
-        # Potential Network hidden layer specifications
+        # Apply testing methods
+        if self.testing:
+            self._sample_dw = self._sample_dw_test_version
 
+        # Potential Network hidden layer specifications
         hidden_dims, hidden_acts, final_act = self._check_hidden_layers(
             hidden_dims=hidden_dims, 
             hidden_acts=hidden_acts, 
@@ -124,54 +130,73 @@ class PhiNN(nn.Module):
     ##############################
 
     def f(self, t, y, sig_params):
-        """Drift term.
+        """Drift term. 
+        
+        Applies across batches.
+
         Args:
-            t : Scalar time.
-            y : State vector of shape (k, ndim,).
+            t (Tensor) : Time values. Shape (b,).
+            y (Tensor) : State vector. Shape (b,n,d).
+            sig_params (Tensor) : Signal parameters. Shape (b,nsigparams).
         Returns:
-            tensor of shape (k, ndim,)
+            Tensor of shape (b,n,d).
         """
         return -(self.grad_phi(t, y) + self.grad_tilt(t, sig_params)[:,None,:])
 
     def g(self, t, y):
-        """Diffusion term.
+        """Diffusion term. 
+        
+        Currently only implements scalar noise level. Applies across batches. 
+        (TODO: generalize noise term.)
+
         Args:
-            t : Scalar time.
-            y : State vector of shape (k, ndim,).
+            t (Tensor) : Time values. Shape (b,).
+            y (Tensor) : State vector. Shape (b,n,d).
         Returns:
-            Scalar noise or TODO: nonscalar noise
+            Tensor of shape (b,n,d).
         """
         if self.infer_noise:
-            return torch.exp(self.logsigma)
+            return torch.exp(self.logsigma) * torch.ones(
+                y.shape, dtype=self.dtype, device=self.device)
         else:
-            return self.sigma
+            return self.sigma * torch.ones(
+                y.shape, dtype=self.dtype, device=self.device)
     
     def phi(self, y):
-        """Potential value, without tilt.
+        """Potential value, without tilt. 
+        
+        Applies across batches.
+
         Args:
-            y : State vector of shape (k, ndim,).
+            y (Tensor) : State vector. Shape (b,n,d) or (n, d).
         Returns:
-            scalar
+            Tensor of shape (b, n, 1) or (n, 1).
         """
         return self.phi_nn(y)
 
     def grad_phi(self, t, y):
-        """Gradient of potential, without tilt.
+        """Gradient of potential, without tilt. 
+        
+        Applies across batches.
+
         Args:
-            t : Scalar time.
-            y : State vector of shape (ndim,).
+            t (Tensor) : Time values. Shape (b,).
+            y (Tensor) : State vector. Shape (b,n,d).
         Returns:
-            tensor of shape (ndim,)
+            Tensor of shape (b,n,d).
         """
         return jacobian(self._phi_summed, y, create_graph=True).sum(axis=(0,1))
         
     def grad_tilt(self, t, sig_params):
-        """Gradient of tilt function.
+        """Gradient of linear tilt function. 
+        
+        Applies across batches.
+
         Args:
-            t : Scalar time.
-            sig_params : tensor of shape (nsig_params,) : Signal parameters.
+            t (Tensor) : Time values. Shape (b,).
+            sig_params (Tensor) : Signal parameters. Shape (b,nsigparams).
         Returns:
-            tensor of shape (nsigs,)
+            Tensor of shape (b,nsigs).
         """
         signal_vals = self.f_signal(t, sig_params)
         return self.tilt_nn(signal_vals)
@@ -180,85 +205,105 @@ class PhiNN(nn.Module):
     ##  Evolution Methods  ##
     #########################
 
-    def step(self, t, y, params, dt, dw):
-        """Take an Euler-Maruyama step.
+    def step(self, t, y, sig_params, dt, dw):
+        """Update states taking a step via the Euler-Maruyama method. 
+        
+        Applies across batches.
+
         Args:
-            t : Current time (scalar).
-            y : State vector of shape (ndim,).
-            params : parameters of the signal function.
-            dt : timestep.
-            dw : Tensor of shape (ndim,). Wiener increment, i.e. random draws 
-                from Normal(mu=0, var=dt).   
+            t (Tensor) : Time values. Shape (b,).
+            y (Tensor) : State vector. Shape (b,n,d).
+            sig_params (Tensor) : Signal parameters. Shape (b,nsigparams).
+            dt (Tensor) : Timesteps. Shape (b,).
+            dw (Tensor) : Wiener increments, i.e. random draws from 
+                Normal(mu=0,var=dt). Shape (b,n,d).
         Returns:
-            Updated state. Tensor of shape (ndim,)
+            Tensor of shape (b,n,d).
         """
-        fval = self.f(t, y, params)
+        fval = self.f(t, y, sig_params)
         gval = self.g(t, y)
         return y + fval * dt + gval * dw
     
-    def simulate_forward(self, t0, t1, y0, sigparams, 
-                         dt=1e-3, history=False):
+    def simulate_forward(self, t0, t1, y0, sigparams, dt, history=False):
         """Simulate all trajectories forward in time.
+
+        Applies across batches. Assumes that while the start and end times may
+        differ across batches, their differences are uniform, i.e. t1 - t0 = C,
+        a common temporal interval length. In addition, a uniform timestep is 
+        used across batches.
+
         Args:
-            t0 (batch_size): 
-            t1 (batch_size): 
-            y0 (batch_size, ncells, ndim): 
-            sigparams (): 
+            t0 (Tensor) : Start times. Shape (b,).
+            t1 (Tensor) : End times. Shape (b,).
+            y0 (Tensor) : Initial states. Shape (b,n,d).
+            sig_params (Tensor) : Signal parameters. Shape (b,nsigparams).
+            dt (float) : Euler-Maruyama timestep. Used across all batches.
+            history (bool) : Flag indicating whether to store and return state 
+                history. Default False.
         Returns:
-            ...
+            Tensor of shape (b,n,d) or, if history=True, a tuple containing 
+            this and a list of states of the same shape.
         """
-                
+        
         ts = torch.ones(t0.shape, device=self.device) * t0
         nsteps = round((t1[0].item() - t0[0].item()) / dt)
-        
         y = y0
-        y_hist = []
-
         if history:
+            y_hist = []
             y_hist.append(y0.detach().numpy())
-        for i in range(nsteps):
-            dw = np.sqrt(dt) * torch.normal(0, 1, y0.shape, 
-                                            device=self.device, 
-                                            dtype=self.dtype)
-            if self.testing and (self.testing_dw is not None):
-                dw[:] = self.testing_dw
-            y = self.step(ts, y, sigparams, dt, dw)
-            ts += dt
-            if history:
+            for i in range(nsteps):
+                dw = self._sample_dw(dt, y0.shape, self.device, self.dtype)
+                y = self.step(ts, y, sigparams, dt, dw)
+                ts += dt
                 y_hist.append(y.detach().numpy())
-        return y if not history else (y, y_hist)
-    
+
+            return y, y_hist
+        else:
+            for i in range(nsteps):
+                dw = self._sample_dw(dt, y0.shape, self.device, self.dtype)
+                y = self.step(ts, y, sigparams, dt, dw)
+                ts += dt
+            return y
+
     def forward(self, x, dt=1e-3):
         """Forward pass of the model.
 
+        Applies across batches.
+
         Args:
-            x (torch.Tensor): Model inputs. Shape (batch_size, 2+ncells+nparams)
-            dt (float, optional): Constant step size. Defaults to 1e-3.
+            x (Tensor): Model inputs, in batches. Each batch consists of an
+                initial and final time, a number n of d-dimensional cells, 
+                flattened into a 1-d array, and a number of signal parameters.
+                Shape (b,2+d*n+nsigparams).
+            dt (float): Constant step size. Default 1e-3.
 
         Returns:
-            _type_: _description_
+            Tensor of shape (b,n,d). The final state of each cell ensemble, 
+            across batches.
         """
         # Parse the inputs
         t0 = x[...,0]
         t1 = x[...,1]
         y0 = x[...,2:-self.nsigparams].view([len(x), -1, self.ndim])
         sigparams = x[...,-self.nsigparams:]
+
         # Sample from the given set of cells, or use the sample directly.
         if self.sample_cells:
             y0 = self._sample_y0(y0)
         
-        assert y0.shape[1] == self.ncells, \
-            f"Trying to simulate {y0.shape[1]} cells. Expected {self.ncells}."
+        if y0.shape[1] != self.ncells:
+            msg = f"Simulating {y0.shape[1]} cells. Expected {self.ncells}."
+            raise RuntimeError(msg)
         
-        y0.requires_grad_()
-        return self.simulate_forward(t0, t1, y0, sigparams, dt=dt)
+        y0.requires_grad_()  # Must be able to compute spatial gradients.
+        return self.simulate_forward(t0, t1, y0, sigparams, dt)
     
     ##############################
     ##  Initialization Methods  ##
     ##############################
 
     def _check_hidden_layers(self, hidden_dims, hidden_acts, final_act):
-        """Check the requested model architecture.
+        """Check the model architecture.
         """
         nlayers = len(hidden_dims)
         # Convert singular hidden activation to a list.
@@ -566,6 +611,17 @@ class PhiNN(nn.Module):
     ######################
     ##  Helper Methods  ##
     ######################
+
+    def _sample_dw(self, dt, shape, device, dtype):
+        return math.sqrt(dt) * torch.normal(0, 1, shape, 
+                                            device=device, dtype=dtype)
+
+    def _sample_dw_test_version(self, dt, shape, device, dtype):
+        dw = math.sqrt(dt) * torch.normal(0, 1, shape, 
+                                            device=device, dtype=dtype)
+        if self.testing_dw is not None:
+            dw[:] = self.testing_dw
+        return dw
 
     def _sample_y0(self, y0):
         y0_samp = torch.empty([y0.shape[0], self.ncells, y0.shape[2]], 
