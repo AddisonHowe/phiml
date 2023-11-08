@@ -36,273 +36,297 @@ WT1 = np.array([
     [-1, 1],
 ], dtype=float)
 
-@pytest.mark.parametrize("ws, x, phi_exp", [
-    [[W1, W2, W3], [[0, 0]], [0.0]],
-    [[W1, W2, W3], [[0, 1]], [3.9934]],
-    [[W1, W2, W3], [[1, 0]], [2.69506]],
-    [[W1, W2, W3], [[1, 1]], [3.24787]],
-])
+
 @pytest.mark.parametrize("eval_mode", [True, False])
-def test_phi(ws, x, phi_exp, eval_mode):
-    model = PhiNN(
-        ndim=2, nsig=2, f_signal=None, 
-        testing=True, include_bias=False, 
-        init_weights=True,
-        init_weight_values_phi = ws,
-        dtype=torch.float64,
-    )
-    if eval_mode: model.eval()
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+class TestCoreLandscapeMethods:
 
-    x = torch.tensor(x, dtype=torch.float64)
-    phi_act = model.phi(x).detach().numpy()
-    assert np.allclose(phi_exp, phi_act, atol=1e-6)
+    @pytest.mark.parametrize('ws, wts, sigparams, t, x, f_exp, f_shape_exp', [
+        [[W1, W2, W3], [WT1], 
+         [[5, 0, 1, 1, -1]], [0],  # 1 batch
+         [[[0, 1]]], 
+         [[[-0.441403, -0.16003]]], (1, 1, 2)
+        ],
+        [[W1, W2, W3], [WT1], 
+         [[5, 0, 1, 1, -1]], [10],  # 1 batch
+         [[[0, 1]]], 
+         [[[5.5586, 2.83997]]], (1, 1, 2)
+        ],
+        [[W1, W2, W3], [WT1], 
+         [[5, 0, 1, 1, -1],[5, 0, 1, 1, -1]], [0,10],  # 2 batches
+         [[[0, 1]], [[0, 1]]], 
+         [[[-0.441403, -0.16003]], [[5.5586, 2.83997]]], (2, 1, 2)
+        ],
+    ])
+    def test_f(self, eval_mode, dtype, ws, wts, sigparams, t, x, 
+               f_exp, f_shape_exp):
+        sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
+        model = PhiNN(
+            ndim=2, nsig=2, f_signal=sigfunc, 
+            testing=True, include_bias=False, 
+            init_weights=True,
+            init_weight_values_phi=ws,
+            init_weight_values_tilt=wts,
+            dtype=dtype,
+        )
+        if eval_mode: model.eval()
+        sigparams = torch.tensor(sigparams, dtype=dtype)
+        t = torch.tensor(t, dtype=dtype)
+        x = torch.tensor(x, dtype=dtype, requires_grad=True)
+        f_act = model.f(t, x, sigparams).detach().numpy()
+        assert np.allclose(f_act, f_exp) and f_act.shape == f_shape_exp
 
-@pytest.mark.parametrize("ws, x, grad_phi_exp, shape_exp", [
-    [[W1, W2, W3], [[[0, 0]]], [[[6.0, 14.0]]], (1, 1, 2)],
-    [[W1, W2, W3], [[[0, 1]]], [[[-3.5586, -0.83997]]], (1, 1, 2)],
-    [[W1, W2, W3], [[[1, 0]]], [[[1.11945, 2.71635]]], (1, 1, 2)],
-    [[W1, W2, W3], [[[1, 1]]], [[[-0.00409335, 0.0116181]]], (1, 1, 2)],
-    [[W1, W2, W3], 
-     [[[1, 1]], [[1, 0]]], 
-     [[[-0.00409335, 0.0116181]], [[1.11945, 2.71635]]], (2, 1, 2)],
-    [[W1, W2, W3], 
-     [[[1, 1], [0, 0]],  # 2 batches, 2 cells/batch
-      [[1, 0], [0, 1]]], 
-     [[[-0.00409335, 0.0116181], [6.0, 14.0]], 
-      [[1.11945, 2.71635], [-3.5586, -0.83997]]], (2, 2, 2)],
-    [[W1, W2, W3], 
-     [[[1, 1], [0, 0]],  # 3 batches, 2 cells/batch
-      [[1, 0], [0, 1]],
-      [[1, 0], [0, 1]],], 
-     [[[-0.00409335, 0.0116181], [6.0, 14.0]], 
-      [[1.11945, 2.71635], [-3.5586, -0.83997]],
-      [[1.11945, 2.71635], [-3.5586, -0.83997]]], (3, 2, 2)],
-])
+    def test_g(self, eval_mode, dtype):
+        pytest.skip()
+
+    @pytest.mark.parametrize("ws, x, phi_exp, phi_shape_exp", [
+        [[W1, W2, W3], [[0, 0]], [0.0], (1, 1)],
+        [[W1, W2, W3], [[0, 1]], [3.9934], (1, 1)],
+        [[W1, W2, W3], [[1, 0]], [2.69506], (1, 1)],
+        [[W1, W2, W3], [[1, 1]], [3.24787], (1, 1)],
+        [[W1, W2, W3], [[0, 0],[0, 1],[1, 0],[1, 1]], 
+         [[0.0],[3.9934],[2.69506],[3.24787]], (4, 1)],
+        [[W1, W2, W3], 
+         [[[0, 0],[0, 1],[1, 0],[1, 1]],
+          [[0, 0],[0, 1],[1, 0],[1, 1]]], 
+         [[[0.0],[3.9934],[2.69506],[3.24787]], 
+          [[0.0],[3.9934],[2.69506],[3.24787]]], (2, 4, 1)],
+    ])
+    def test_phi(self, eval_mode, dtype, ws, x, phi_exp, phi_shape_exp):
+        model = PhiNN(
+            ndim=2, nsig=2, f_signal=None, 
+            testing=True, include_bias=False, 
+            init_weights=True,
+            init_weight_values_phi=ws,
+            dtype=dtype,
+        )
+        if eval_mode: model.eval()
+
+        x = torch.tensor(x, dtype=dtype)
+        phi_act = model.phi(x).detach().numpy()
+        assert np.allclose(phi_exp, phi_act, atol=1e-6) and phi_act.shape == phi_shape_exp
+
+    @pytest.mark.parametrize("ws, x, grad_phi_exp, shape_exp", [
+        [[W1, W2, W3], [[[0, 0]]], [[[6.0, 14.0]]], (1, 1, 2)],
+        [[W1, W2, W3], [[[0, 1]]], [[[-3.5586, -0.83997]]], (1, 1, 2)],
+        [[W1, W2, W3], [[[1, 0]]], [[[1.11945, 2.71635]]], (1, 1, 2)],
+        [[W1, W2, W3], [[[1, 1]]], [[[-0.00409335, 0.0116181]]], (1, 1, 2)],
+        [[W1, W2, W3], 
+         [[[1, 1]], [[1, 0]]], 
+         [[[-0.00409335, 0.0116181]], [[1.11945, 2.71635]]], (2, 1, 2)],
+        [[W1, W2, W3], 
+         [[[1, 1], [0, 0]],  # 2 batches, 2 cells/batch
+         [[1, 0], [0, 1]]], 
+         [[[-0.00409335, 0.0116181], [6.0, 14.0]], 
+         [[1.11945, 2.71635], [-3.5586, -0.83997]]], (2, 2, 2)],
+        [[W1, W2, W3], 
+         [[[1, 1], [0, 0]],  # 3 batches, 2 cells/batch
+         [[1, 0], [0, 1]],
+         [[1, 0], [0, 1]],], 
+         [[[-0.00409335, 0.0116181], [6.0, 14.0]], 
+         [[1.11945, 2.71635], [-3.5586, -0.83997]],
+         [[1.11945, 2.71635], [-3.5586, -0.83997]]], (3, 2, 2)],
+    ])
+    def test_grad_phi(self, eval_mode, dtype, ws, x, grad_phi_exp, shape_exp):
+        model = PhiNN(
+            ndim=2, nsig=2, f_signal=None, 
+            testing=True, include_bias=False, 
+            init_weights=True,
+            init_weight_values_phi=ws,
+            dtype=dtype,
+        )
+        if eval_mode: model.eval()
+
+        x = torch.tensor(x, dtype=dtype, requires_grad=True)
+        grad_phi_act = model.grad_phi(0, x).detach().numpy()
+
+        errors = []
+        if not np.allclose(grad_phi_exp, grad_phi_act, atol=1e-6):
+            msg = f"Value mismatch between grad phi actual and expected."
+            errors.append(msg)
+        if not (grad_phi_act.shape == shape_exp):
+            msg = f"Shape mismatch between grad phi actual and expected."
+            msg += f"Expected {shape_exp}. Got {grad_phi_act.shape}."
+            errors.append(msg)
+        assert not errors, "Errors occurred:\n{}".format("\n".join(errors))
+
+    @pytest.mark.parametrize("ws, x, grad_phi_exp", [
+        [[W1, W2, W3], [[[0, 0]]], [[[6.0, 14.0]]]],
+        [[W1, W2, W3], [[[0, 1]]], [[[-3.5586, -0.83997]]]],
+        [[W1, W2, W3], [[[1, 0]]], [[[1.11945, 2.71635]]]],
+        [[W1, W2, W3], [[[1, 1]]], [[[-0.00409335, 0.0116181]]]],
+        [[W1, W2, W3], 
+        [[[1, 1]], [[1, 0]]], 
+        [[[-0.00409335, 0.0116181]], [[1.11945, 2.71635]]]],
+        [[W1, W2, W3], 
+        [[[1, 1], [0, 0]],  # 2 batches, 2 cells/batch
+        [[1, 0], [0, 1]]], 
+        [[[-0.00409335, 0.0116181], [6.0, 14.0]], 
+        [[1.11945, 2.71635], [-3.5586, -0.83997]]]],
+        [[W1, W2, W3], 
+        [[[1, 1], [0, 0]],  # 3 batches, 2 cells/batch
+        [[1, 0], [0, 1]],
+        [[1, 0], [0, 1]],], 
+        [[[-0.00409335, 0.0116181], [6.0, 14.0]], 
+        [[1.11945, 2.71635], [-3.5586, -0.83997]],
+        [[1.11945, 2.71635], [-3.5586, -0.83997]]]],
+    ])
+    @pytest.mark.parametrize("ncells", [1,2,3,4])
+    @pytest.mark.parametrize("seed", [1,2,3])
+    def test_grad_phi_with_shuffle(self, eval_mode, dtype, 
+                                   ws, x, grad_phi_exp, ncells, seed):
+        npdtype = np.float32 if dtype == torch.float32 else np.float64
+        grad_phi_exp = np.array(grad_phi_exp, dtype=npdtype)
+        model = PhiNN(
+            ndim=2, nsig=2, f_signal=None, 
+            ncells=ncells,
+            testing=True, include_bias=False, 
+            init_weights=True,
+            init_weight_values_phi=ws,
+            dtype=dtype,
+            sample_cells=True,
+            rng=np.random.default_rng(seed=seed)
+        )
+        if eval_mode: model.eval()
+
+        x = torch.tensor(x, dtype=dtype, requires_grad=True)
+        x_samp = model._sample_y0(x)
+        grad_phi_act = model.grad_phi(0, x_samp).detach().numpy()
+
+        rng2 = np.random.default_rng(seed=seed)
+        nbatches = x.shape[0]
+        ncells_input = x.shape[1]
+        grad_phi_exp_shuffled = np.zeros([nbatches, ncells, x.shape[2]], 
+                                         dtype=npdtype)
+        
+        if ncells_input < ncells:
+            for bidx in range(nbatches):
+                samp_idxs = rng2.choice(x.shape[1], ncells, True)
+                grad_phi_exp_shuffled[bidx,:] = grad_phi_exp[bidx,samp_idxs]
+        else:
+            for bidx in range(nbatches):
+                samp_idxs = rng2.choice(x.shape[1], ncells, False)
+                grad_phi_exp_shuffled[bidx,:] = grad_phi_exp[bidx,samp_idxs]
+
+        errors = []
+        if not np.allclose(grad_phi_exp_shuffled, grad_phi_act, atol=1e-6):
+            msg = f"Value mismatch between grad phi actual and expected."
+            msg += f"Expected:\n{grad_phi_exp_shuffled}\nGot:\n{grad_phi_act}"
+            errors.append(msg)
+        assert not errors, "Errors occurred:\n{}".format("\n".join(errors))
+
+    @pytest.mark.parametrize('wts, sigparams, t, grad_tilt_exp, shape_exp', [
+        [[WT1], [[5, 0, 1, 1, -1]], [0], [[4, 1]], (1, 2)],
+        [[WT1], [[5, 0, 1, 1, -1]], [10], [[-2, -2]], (1, 2)],
+        [[WT1], 
+         [[5, 0, 1, 1, -1],  # 3 batches
+          [5, 0, 1, 1, -1],
+          [5, 0, 1, 1, -1]], 
+         [0, 10, 10], 
+         [[4, 1], [-2, -2], [-2, -2]], 
+         (3, 2)],
+    ])
+    def test_grad_tilt(self, eval_mode, dtype, wts, sigparams, t, 
+                       grad_tilt_exp, shape_exp):
+        sigparams = torch.tensor(sigparams, dtype=dtype)
+        sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
+        model = PhiNN(
+            ndim=2, nsig=2, f_signal=sigfunc, 
+            testing=True, include_bias=False, 
+            init_weights=True,
+            init_weight_values_tilt=wts,
+            dtype=dtype,
+        )
+        if eval_mode: model.eval()
+        ts = torch.tensor(t, dtype=dtype)
+        grad_tilt_act = model.grad_tilt(ts, sigparams).detach().numpy()
+
+        errors = []
+        if not np.allclose(grad_tilt_act, grad_tilt_exp):
+            msg = f"Value mismatch between grad tilt actual and expected."
+            errors.append(msg)
+        if not (grad_tilt_act.shape == shape_exp):
+            msg = f"Shape mismatch between grad tilt actual and expected."
+            msg += f"Expected {shape_exp}. Got {grad_tilt_act.shape}."
+            errors.append(msg)
+        assert not errors, "Errors occurred:\n{}".format("\n".join(errors))
+
+
 @pytest.mark.parametrize("eval_mode", [True, False])
-def test_grad_phi(ws, x, grad_phi_exp, shape_exp, eval_mode):
-    model = PhiNN(
-        ndim=2, nsig=2, f_signal=None, 
-        testing=True, include_bias=False, 
-        init_weights=True,
-        init_weight_values_phi = ws,
-        dtype=torch.float64,
-    )
-    if eval_mode: model.eval()
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+class TestEvolutionMethods:
 
-    x = torch.tensor(x, dtype=torch.float64, requires_grad=True)
-    grad_phi_act = model.grad_phi(0, x).detach().numpy()
+    @pytest.mark.parametrize('ws, wts, tcrit, p0, p1, t, dt, sigma, dw, x, x_exp', [
+        [[W1, W2, W3], [WT1], 5, [0, 1], [1, -1], 
+         0,  1e-2, 1e-3, [[0.05, -0.024]], [[0, 1]], [[-0.00436403, 0.9983757]]
+        ],
+        [[W1, W2, W3], [WT1], 5, [0, 1], [1, -1], 
+         10, 1e-2, 1e-3, [[0.05, -0.024]], [[0, 1]], [[0.055636, 1.0283757]]
+        ],
+        [[W1, W2, W3], [WT1], 5, [0, 1], [1, -1], 
+         0, 1e-2, 1e-3, [[0.05, -0.024],[0.05, -0.024]], 
+         [[0, 1], [0, 1]], [[-0.00436403, 0.9983757], [-0.00436403, 0.9983757]]
+        ],
+    ])
+    def test_step(self, eval_mode, dtype, ws, wts, tcrit, p0, p1, t, dt, 
+                  sigma, dw, x, x_exp):
+        sigparams = torch.tensor([[tcrit, *p0, *p1]], dtype=dtype)
+        sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
+        model = PhiNN(
+            ndim=2, nsig=2, f_signal=sigfunc, sigma=sigma,
+            testing=True, include_bias=False, 
+            init_weights=True,
+            init_weight_values_phi=ws,
+            init_weight_values_tilt=wts,
+            dtype=dtype,
+        )
+        if eval_mode: model.eval()
+        t = torch.tensor([t], dtype=dtype)
+        x = torch.tensor([x], dtype=dtype, requires_grad=True)
+        dw = torch.tensor([dw], dtype=dtype)
+        x_act = model.step(t, x, sigparams, dt, dw).detach().numpy()
+        assert np.allclose(x_act, x_exp)    
 
-    errors = []
-    if not np.allclose(grad_phi_exp, grad_phi_act, atol=1e-6):
-        msg = f"Value mismatch between grad phi actual and expected."
-        errors.append(msg)
-    if not (grad_phi_act.shape == shape_exp):
-        msg = f"Shape mismatch between grad phi actual and expected."
-        msg += f"Expected {shape_exp}. Got {grad_phi_act.shape}."
-        errors.append(msg)
-    assert not errors, "Errors occurred:\n{}".format("\n".join(errors))
-    
+    @pytest.mark.parametrize('ws, wts, sigparams, t, dt, tfin, \
+                            sigma, dw, y, shape_exp', [
+        [[W1, W2, W3], [WT1], [[5, 0, 1, 1, -1]], [0],  1e-2, [10],
+         1e-3, [[[0.05, -0.024]]], [[[0, 1]]], (1,1,2)
+        ],
+        [[W1, W2, W3], [WT1], [[5, 0, 1, 1, -1]], [10], 1e-2, [10],
+         1e-3, [[[0.05, -0.024]]], [[[0, 1]]], (1,1,2)
+        ],
+        [[W1, W2, W3], [WT1], [[5, 0, 1, 1, -1]], [0], 1e-2,  [10],
+         1e-3, [[[0.05, -0.024],[0.05, -0.024]]], [[[0, 1], [0, 1]]], (1,2,2)
+        ],
+    ])
+    def test_simulate_forward(self, eval_mode, dtype, ws, wts, sigparams, t, dt, 
+                              tfin, sigma, dw, y, shape_exp):
+        ncells = len(y)
+        sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
+        model = PhiNN(
+            ndim=2, nsig=2, f_signal=sigfunc, sigma=sigma, ncells=ncells,
+            testing=True, include_bias=False, 
+            init_weights=True,
+            init_weight_values_phi=ws,
+            init_weight_values_tilt=wts,
+            testing_dw=torch.tensor(dw, dtype=dtype),
+            dtype=dtype,
+        )
+        if eval_mode: model.eval()
 
-@pytest.mark.parametrize('tcrit, p0, p1, t, signal_exp', [
-    [5, [0, 1], [1, -1], 0, [0, 1]],
-    [5, [0, 1], [1, -1], 1, [0, 1]],
-    [5, [0, 1], [1, -1], 4, [0, 1]],
-    [5, [0, 1], [1, -1], 5, [1, -1]],
-    [5, [0, 1], [1, -1], 6, [1, -1]],
-    [5, [0, 1], [1, -1], 10, [1, -1]],
-    [5, [0, 1], [1, -1], 12, [1, -1]],
-])
-def test_binary_signal_function(tcrit, p0, p1, t, signal_exp):
-    sigfunc = get_binary_function(tcrit, p0, p1)
-    signal_act = sigfunc(t)
-    assert np.allclose(signal_act, signal_exp)
+        y = np.array(y)
+        sigparams = np.array(sigparams)
+        t0 = torch.tensor(t, dtype=dtype)
+        t1 = torch.tensor(tfin, dtype=dtype)
+        y0 = torch.tensor(y, dtype=dtype)
+        y0.requires_grad_()
+        sigparams = torch.tensor(sigparams, dtype=dtype)
+        y_act = model.simulate_forward(t0, t1, y0, sigparams, dt=dt).detach().numpy()
 
-@pytest.mark.parametrize('wts, sigparams, t, grad_tilt_exp, shape_exp', [
-    [[WT1], [[5, 0, 1, 1, -1]], [0], [[4, 1]], (1, 2)],
-    [[WT1], [[5, 0, 1, 1, -1]], [10], [[-2, -2]], (1, 2)],
-    [[WT1], 
-     [[5, 0, 1, 1, -1],  # 3 batches
-      [5, 0, 1, 1, -1],
-      [5, 0, 1, 1, -1]], 
-     [0, 10, 10], 
-     [[4, 1], [-2, -2], [-2, -2]], 
-     (3, 2)],
-])
-@pytest.mark.parametrize("eval_mode", [True, False])
-def test_grad_tilt(wts, sigparams, t, grad_tilt_exp, shape_exp, eval_mode):
-    sigparams = torch.tensor(sigparams, dtype=torch.float64)
-    sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
-    model = PhiNN(
-        ndim=2, nsig=2, f_signal=sigfunc, 
-        testing=True, include_bias=False, 
-        init_weights=True,
-        init_weight_values_tilt = wts,
-        dtype=torch.float64,
-    )
-    if eval_mode: model.eval()
-    ts = torch.tensor(t, dtype=torch.float64)
-    grad_tilt_act = model.grad_tilt(ts, sigparams).detach().numpy()
+        assert y_act.shape == shape_exp
 
-    errors = []
-    if not np.allclose(grad_tilt_act, grad_tilt_exp):
-        msg = f"Value mismatch between grad tilt actual and expected."
-        errors.append(msg)
-    if not (grad_tilt_act.shape == shape_exp):
-        msg = f"Shape mismatch between grad tilt actual and expected."
-        msg += f"Expected {shape_exp}. Got {grad_tilt_act.shape}."
-        errors.append(msg)
-    assert not errors, "Errors occurred:\n{}".format("\n".join(errors))
-
-
-@pytest.mark.parametrize('ws, wts, sigparams, t, x, f_exp', [
-    [[W1, W2, W3], [WT1], 
-     [[5, 0, 1, 1, -1]], [0],  # 1 batch
-     [[[0, 1]]], 
-     [[[-0.441403, -0.16003]]]
-    ],
-    [[W1, W2, W3], [WT1], 
-     [[5, 0, 1, 1, -1]], [10],  # 1 batch
-     [[[0, 1]]], 
-     [[[5.5586, 2.83997]]]
-    ],
-    [[W1, W2, W3], [WT1], 
-     [[5, 0, 1, 1, -1],[5, 0, 1, 1, -1]], [0,10],  # 2 batches
-     [[[0, 1]], [[0, 1]]], 
-     [[[-0.441403, -0.16003]], [[5.5586, 2.83997]]]
-    ],
-])
-@pytest.mark.parametrize("eval_mode", [True, False])
-def test_f(ws, wts, sigparams, t, x, f_exp, eval_mode):
-    sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
-    model = PhiNN(
-        ndim=2, nsig=2, f_signal=sigfunc, 
-        testing=True, include_bias=False, 
-        init_weights=True,
-        init_weight_values_phi = ws,
-        init_weight_values_tilt = wts,
-        dtype=torch.float64,
-    )
-    if eval_mode: model.eval()
-    sigparams = torch.tensor(sigparams, dtype=torch.float64)
-    t = torch.tensor(t, dtype=torch.float64)
-    x = torch.tensor(x, dtype=torch.float64, requires_grad=True)
-    f_act = model.f(t, x, sigparams).detach().numpy()
-    assert np.allclose(f_act, f_exp)
-    
-@pytest.mark.parametrize('ws, wts, tcrit, p0, p1, t, dt, sigma, dw, x, x_exp', [
-    [[W1, W2, W3], [WT1], 5, [0, 1], [1, -1], 
-     0,  1e-2, 1e-3, [[0.05, -0.024]], [[0, 1]], [[-0.00436403, 0.9983757]]
-    ],
-    [[W1, W2, W3], [WT1], 5, [0, 1], [1, -1], 
-     10, 1e-2, 1e-3, [[0.05, -0.024]], [[0, 1]], [[0.055636, 1.0283757]]
-    ],
-    [[W1, W2, W3], [WT1], 5, [0, 1], [1, -1], 
-     0, 1e-2, 1e-3, [[0.05, -0.024],[0.05, -0.024]], 
-     [[0, 1], [0, 1]], [[-0.00436403, 0.9983757], [-0.00436403, 0.9983757]]
-    ],
-])
-@pytest.mark.parametrize("eval_mode", [True, False])
-def test_step(ws, wts, tcrit, p0, p1, t, dt, sigma, dw, x, x_exp, eval_mode):
-    sigparams = torch.tensor([[tcrit, *p0, *p1]], dtype=torch.float64)
-    sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
-    model = PhiNN(
-        ndim=2, nsig=2, f_signal=sigfunc, sigma=sigma,
-        testing=True, include_bias=False, 
-        init_weights=True,
-        init_weight_values_phi = ws,
-        init_weight_values_tilt = wts,
-        dtype=torch.float64,
-    )
-    if eval_mode: model.eval()
-    t = torch.tensor([t], dtype=torch.float64)
-    x = torch.tensor([x], dtype=torch.float64, requires_grad=True)
-    dw = torch.tensor([dw], dtype=torch.float64)
-    x_act = model.step(t, x, sigparams, dt, dw).detach().numpy()
-    assert np.allclose(x_act, x_exp)
-    
-@pytest.mark.parametrize('ws, wts, sigparams, t, dt, tfin, \
-                         sigma, dw, y, shape_exp', [
-    [[W1, W2, W3], [WT1], [[5, 0, 1, 1, -1]], [0],  1e-2, [10],
-     1e-3, [[[0.05, -0.024]]], [[[0, 1]]], (1,1,2)
-    ],
-    [[W1, W2, W3], [WT1], [[5, 0, 1, 1, -1]], [10], 1e-2, [10],
-     1e-3, [[[0.05, -0.024]]], [[[0, 1]]], (1,1,2)
-    ],
-    [[W1, W2, W3], [WT1], [[5, 0, 1, 1, -1]], [0], 1e-2,  [10],
-     1e-3, [[[0.05, -0.024],[0.05, -0.024]]], [[[0, 1], [0, 1]]], (1,2,2)
-    ],
-])
-@pytest.mark.parametrize("eval_mode", [True, False])
-def test_simulate_forward(ws, wts, sigparams, t, dt, tfin, sigma, 
-                          dw, y, shape_exp, eval_mode):
-    ncells = len(y)
-    sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
-    model = PhiNN(
-        ndim=2, nsig=2, f_signal=sigfunc, sigma=sigma, ncells=ncells,
-        testing=True, include_bias=False, 
-        init_weights=True,
-        init_weight_values_phi = ws,
-        init_weight_values_tilt = wts,
-        testing_dw=torch.tensor(dw, dtype=torch.float64),
-        dtype=torch.float64,
-    )
-    if eval_mode: model.eval()
-
-    y = np.array(y)
-    sigparams = np.array(sigparams)
-    t0 = torch.tensor(t, dtype=torch.float64)
-    t1 = torch.tensor(tfin, dtype=torch.float64)
-    y0 = torch.tensor(y, dtype=torch.float64)
-    y0.requires_grad_()
-    sigparams = torch.tensor(sigparams, dtype=torch.float64)
-    y_act = model.simulate_forward(t0, t1, y0, sigparams, dt=dt).detach().numpy()
-
-    assert y_act.shape == shape_exp
-    
-
-@pytest.mark.parametrize('y_sim, y_obs, loss_exp', [
-    [   
-        # Simulated
-        [[[0,0],[1,1],[1,0],[0,1]],
-         [[0,0],[0,0],[0,0],[0,0]],
-         [[1,1],[1,1],[1,1],[1,1]]],
-        # Observed
-        [[[1,1],[0,0],[1,0],[0,1]],
-         [[0,0],[0,0],[0,0],[0,0]],
-         [[1,1],[1,1],[1,1],[1,1]]],
-        # Loss
-        (0 + 0 + 0)/3
-    ],
-    [   
-        # Simulated
-        [[[0,0],[1,1],[1,0],[0,1]],
-         [[1,1],[1,1],[1,1],[1,1]],
-         [[0,0],[0,0],[0,0],[0,0]]],
-        # Observed
-        [[[1,1],[0,0],[1,0],[0,1]],
-         [[0,0],[0,0],[0,0],[0,0]],
-         [[1,1],[1,1],[1,1],[1,1]]],
-        # Loss
-        ((0+0) + (2+0) + (2+0))/3
-    ],
-    [   
-        # Simulated
-        [[[0,0],[2,2],[2,0],[0,2]],  # mean: [1,1]  cov: [1.333,0,0,1.333]
-         [[1,1],[1,1],[1,1],[1,1]],
-         [[0,0],[0,0],[0,0],[0,0]]],
-        # Observed
-        [[[1,1],[0,0],[1,0],[0,1]],  # mean: [0.5,0.5]  cov: [0.333,0,0,0.333]
-         [[0,0],[0,0],[0,0],[0,0]],
-         [[1,1],[1,1],[1,1],[1,1]]],
-        # Loss
-        ((0.5+2) + (2+0) + (2+0))/3
-    ],
-])
-def test_mean_cov_loss(y_sim, y_obs, loss_exp):
-    y_sim = torch.Tensor(y_sim)
-    y_obs = torch.Tensor(y_obs)
-    loss_act = mean_cov_loss(y_sim, y_obs)
-    assert np.allclose(loss_act, loss_exp)
+    def test_forward(self, eval_mode, dtype):
+        pytest.skip()
 
 
 @pytest.mark.parametrize('ncells, ws, wts, sigparams, t0, dt, tfin, \
@@ -319,7 +343,6 @@ def test_mean_cov_loss(y_sim, y_obs, loss_exp):
        [0.989734, -0.00749453], 
        [0.992008, 0.997977]]],
     ],
-
 ])
 class TestNoNoise:
 
@@ -333,14 +356,14 @@ class TestNoNoise:
         return x
 
     def test_forward(self, ncells, ws, wts, sigparams, t0, dt, tfin, 
-                              sigma, dw, y0, y1, yfin_exp):
+                     sigma, dw, y0, y1, yfin_exp):
         sigfunc = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
         model = PhiNN(
             ndim=2, nsig=2, f_signal=sigfunc, sigma=sigma, ncells=ncells,
             testing=True, include_bias=False, 
             init_weights=True,
-            init_weight_values_phi = ws,
-            init_weight_values_tilt = wts,
+            init_weight_values_phi=ws,
+            init_weight_values_tilt=wts,
             testing_dw=torch.tensor(dw, dtype=torch.float64),
             dtype=torch.float64,
         )
@@ -358,8 +381,8 @@ class TestNoNoise:
             ndim=2, nsig=2, f_signal=sigfunc, sigma=sigma, ncells=ncells,
             testing=True, include_bias=False, 
             init_weights=True,
-            init_weight_values_phi = ws,
-            init_weight_values_tilt = wts,
+            init_weight_values_phi=ws,
+            init_weight_values_tilt=wts,
             testing_dw=torch.tensor(dw, dtype=torch.float64),
             dtype=torch.float64,
         )
@@ -384,8 +407,8 @@ class TestNoNoise:
             ndim=2, nsig=2, f_signal=sigfunc, sigma=sigma, ncells=ncells,
             testing=True, include_bias=False, 
             init_weights=True,
-            init_weight_values_phi = ws,
-            init_weight_values_tilt = wts,
+            init_weight_values_phi=ws,
+            init_weight_values_tilt=wts,
             testing_dw=torch.tensor(dw, dtype=torch.float64),
             dtype=torch.float64,
         )
@@ -420,8 +443,8 @@ class TestNoNoise:
             ndim=2, nsig=2, f_signal=sigfunc, sigma=sigma, ncells=ncells,
             testing=True, include_bias=False, 
             init_weights=True,
-            init_weight_values_phi = ws,
-            init_weight_values_tilt = wts,
+            init_weight_values_phi=ws,
+            init_weight_values_tilt=wts,
             testing_dw=torch.tensor(dw, dtype=torch.float64),
             dtype=torch.float64,
         )
@@ -444,70 +467,3 @@ class TestNoNoise:
                 msg += f"Expected:\n{pgrad_exp}\nGot:\n{pgrad}"
                 errors.append(msg)
         assert not errors, "Errors occurred:\n{}".format('\n'.join(errors))
-        
-
-@pytest.mark.parametrize("ws, x, grad_phi_exp", [
-    [[W1, W2, W3], [[[0, 0]]], [[[6.0, 14.0]]]],
-    [[W1, W2, W3], [[[0, 1]]], [[[-3.5586, -0.83997]]]],
-    [[W1, W2, W3], [[[1, 0]]], [[[1.11945, 2.71635]]]],
-    [[W1, W2, W3], [[[1, 1]]], [[[-0.00409335, 0.0116181]]]],
-    [[W1, W2, W3], 
-     [[[1, 1]], [[1, 0]]], 
-     [[[-0.00409335, 0.0116181]], [[1.11945, 2.71635]]]],
-    [[W1, W2, W3], 
-     [[[1, 1], [0, 0]],  # 2 batches, 2 cells/batch
-      [[1, 0], [0, 1]]], 
-     [[[-0.00409335, 0.0116181], [6.0, 14.0]], 
-      [[1.11945, 2.71635], [-3.5586, -0.83997]]]],
-    [[W1, W2, W3], 
-     [[[1, 1], [0, 0]],  # 3 batches, 2 cells/batch
-      [[1, 0], [0, 1]],
-      [[1, 0], [0, 1]],], 
-     [[[-0.00409335, 0.0116181], [6.0, 14.0]], 
-      [[1.11945, 2.71635], [-3.5586, -0.83997]],
-      [[1.11945, 2.71635], [-3.5586, -0.83997]]]],
-])
-@pytest.mark.parametrize("ncells", [1,2,3,4])
-@pytest.mark.parametrize("seed", [1,2,3])
-@pytest.mark.parametrize("eval_mode", [True, False])
-@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_grad_phi_with_shuffle(ws, x, grad_phi_exp, ncells, seed, eval_mode, dtype):
-    npdtype = np.float32 if dtype == torch.float32 else np.float64
-    grad_phi_exp = np.array(grad_phi_exp, dtype=npdtype)
-    model = PhiNN(
-        ndim=2, nsig=2, f_signal=None, 
-        ncells=ncells,
-        testing=True, include_bias=False, 
-        init_weights=True,
-        init_weight_values_phi = ws,
-        dtype=dtype,
-        sample_cells=True,
-        rng=np.random.default_rng(seed=seed)
-    )
-    if eval_mode: model.eval()
-
-    x = torch.tensor(x, dtype=dtype, requires_grad=True)
-    x_samp = model._sample_y0(x)
-    grad_phi_act = model.grad_phi(0, x_samp).detach().numpy()
-
-    rng2 = np.random.default_rng(seed=seed)
-    nbatches = x.shape[0]
-    ncells_input = x.shape[1]
-    grad_phi_exp_shuffled = np.zeros([nbatches, ncells, x.shape[2]], 
-                                     dtype=npdtype)
-    
-    if ncells_input < ncells:
-        for bidx in range(nbatches):
-            samp_idxs = rng2.choice(x.shape[1], ncells, True)
-            grad_phi_exp_shuffled[bidx,:] = grad_phi_exp[bidx,samp_idxs]
-    else:
-        for bidx in range(nbatches):
-            samp_idxs = rng2.choice(x.shape[1], ncells, False)
-            grad_phi_exp_shuffled[bidx,:] = grad_phi_exp[bidx,samp_idxs]
-
-    errors = []
-    if not np.allclose(grad_phi_exp_shuffled, grad_phi_act, atol=1e-6):
-        msg = f"Value mismatch between grad phi actual and expected."
-        msg += f"Expected:\n{grad_phi_exp_shuffled}\nGot:\n{grad_phi_act}"
-        errors.append(msg)
-    assert not errors, "Errors occurred:\n{}".format("\n".join(errors))

@@ -25,3 +25,47 @@ def test_kl_loss(dtype, atol, xpath, ypath, loss_exp):
     assert np.allclose(loss_exp, loss_act, atol=atol), \
         f"Expected:\n{loss_exp}\nGot:\n{loss_act}"
     
+
+@pytest.mark.parametrize('y_sim, y_obs, loss_exp', [
+    [   
+        # Simulated
+        [[[0,0],[1,1],[1,0],[0,1]],
+         [[0,0],[0,0],[0,0],[0,0]],
+         [[1,1],[1,1],[1,1],[1,1]]],
+        # Observed
+        [[[1,1],[0,0],[1,0],[0,1]],
+         [[0,0],[0,0],[0,0],[0,0]],
+         [[1,1],[1,1],[1,1],[1,1]]],
+        # Loss
+        (0 + 0 + 0)/3
+    ],
+    [   
+        # Simulated
+        [[[0,0],[1,1],[1,0],[0,1]],
+         [[1,1],[1,1],[1,1],[1,1]],
+         [[0,0],[0,0],[0,0],[0,0]]],
+        # Observed
+        [[[1,1],[0,0],[1,0],[0,1]],
+         [[0,0],[0,0],[0,0],[0,0]],
+         [[1,1],[1,1],[1,1],[1,1]]],
+        # Loss
+        ((0+0) + (2+0) + (2+0))/3
+    ],
+    [   
+        # Simulated
+        [[[0,0],[2,2],[2,0],[0,2]],  # mean: [1,1]  cov: [1.333,0,0,1.333]
+         [[1,1],[1,1],[1,1],[1,1]],
+         [[0,0],[0,0],[0,0],[0,0]]],
+        # Observed
+        [[[1,1],[0,0],[1,0],[0,1]],  # mean: [0.5,0.5]  cov: [0.333,0,0,0.333]
+         [[0,0],[0,0],[0,0],[0,0]],
+         [[1,1],[1,1],[1,1],[1,1]]],
+        # Loss
+        ((0.5+2) + (2+0) + (2+0))/3
+    ],
+])
+def test_mean_cov_loss(y_sim, y_obs, loss_exp):
+    y_sim = torch.Tensor(y_sim)
+    y_obs = torch.Tensor(y_obs)
+    loss_act = mean_cov_loss(y_sim, y_obs)
+    assert np.allclose(loss_act, loss_exp)
