@@ -3,11 +3,11 @@ import os, glob
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-from model import PhiNN
-from model_training import train_model
-from dataset import LandscapeSimulationDataset
-from helpers import get_binary_function
-from helpers import jump_function, mean_cov_loss, mean_diff_loss
+from phiml.model import PhiNN
+from phiml.model_training import train_model
+from phiml.dataset import LandscapeSimulationDataset
+from phiml.helpers import get_binary_function
+from phiml.helpers import jump_function, mean_cov_loss, mean_diff_loss
 
 #####################
 ##  Configuration  ##

@@ -7,9 +7,9 @@ d=2;
 hidden_dims = [16, 32, 32, 32, 16];
 softplus = @(x) log(1+exp(x));
 identity = @(x) x;
-% activations = {softplus, softplus, softplus, softplus, softplus, softplus};
-activations = {@tanh, @tanh, @tanh, @tanh, @tanh, @tanh};
-% activations = {@tanh, @tanh, @tanh, @tanh, softplus};
+activations = {softplus, softplus, softplus, softplus, softplus, softplus};
+% activations = {@tanh, @tanh, @tanh, @tanh, @tanh, softplus};
+% activations = {softplus, @tanh, softplus, @tanh, softplus, softplus};
 sigma_init = 'x';
 
 nlayers = 1 + length(hidden_dims);

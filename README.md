@@ -41,6 +41,11 @@ mamba activate <env-path>
 mamba install -c pytorch pytorch=2.1 torchvision
 ```
 
+Then, to install the project phiml,
+```bash
+pip install -e .
+```
+
 # Usage
 
 ### Main training script

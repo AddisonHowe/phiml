@@ -10,9 +10,9 @@ import matplotlib.pyplot as plt
 import torch
 from torch.profiler import profiler, record_function, ProfilerActivity
 from torch.utils.data import DataLoader
-from model import PhiNN
-from dataset import LandscapeSimulationDataset
-from helpers import jump_function, mean_cov_loss, kl_divergence_est
+from phiml.model import PhiNN
+from phiml.dataset import LandscapeSimulationDataset
+from phiml.helpers import jump_function, mean_cov_loss, kl_divergence_est
 
 TRAINDIR = "data/benchmark_data_train"
 VALIDDIR = "data/benchmark_data_valid"

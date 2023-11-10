@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 import torch
-from helpers import mean_cov_loss, mean_diff_loss, kl_divergence_est
+from phiml.helpers import mean_cov_loss, mean_diff_loss, kl_divergence_est
 
 @pytest.mark.parametrize('dtype, atol', [
     [torch.float32, 1e-6], 

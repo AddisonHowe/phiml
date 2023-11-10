@@ -1,8 +1,8 @@
 import sys, os, argparse
 import numpy as np
-from simulator import Simulator
-from animator import SimulationAnimator
-from helpers import get_binary_function
+from .simulator import Simulator
+from .animator import SimulationAnimator
+from .helpers import get_binary_function
 
 """
 

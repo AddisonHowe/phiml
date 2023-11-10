@@ -5,7 +5,7 @@
 import sys, time
 import numpy as np
 import torch
-from helpers import disp_mem_usage
+from .helpers import disp_mem_usage
 
 def train_model(model, dt, loss_fn, optimizer, 
                 train_dataloader, validation_dataloader, 

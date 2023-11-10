@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-from dataset import LandscapeSimulationDataset
+from phiml.dataset import LandscapeSimulationDataset
 
 #####################
 ##  Configuration  ##

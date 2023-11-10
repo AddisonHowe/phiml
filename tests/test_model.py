@@ -1,9 +1,9 @@
 import pytest
 import numpy as np
 import torch
-from model import PhiNN
-from helpers import get_binary_function, jump_function
-from helpers import mean_cov_loss, mean_diff_loss
+from phiml.model import PhiNN
+from phiml.helpers import get_binary_function, jump_function
+from phiml.helpers import mean_cov_loss, mean_diff_loss
 
 #####################
 ##  Configuration  ##
