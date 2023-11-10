@@ -447,6 +447,7 @@ class PhiNN(nn.Module):
             cbar_title (str) :
             cbar_titlefontsize (int) :
             cbar_ticklabelsize (int) :
+            view_init (tuple) :
             saveas (str) :
             show (bool) :
         Returns:
@@ -469,6 +470,7 @@ class PhiNN(nn.Module):
                                 "$\\ln\\phi$" if log_normalize else "$\\phi$")
         cbar_titlefontsize = kwargs.get('cbar_titlefontsize', 10)
         cbar_ticklabelsize = kwargs.get('cbar_ticklabelsize', 8)
+        view_init = kwargs.get('view_init', (30, -45))
         saveas = kwargs.get('saveas', None)
         show = kwargs.get('show', False)
         #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -518,7 +520,7 @@ class PhiNN(nn.Module):
         ax.set_ylabel(ylabel)
         if plot3d: 
             ax.set_zlabel(zlabel)
-            ax.view_init(30, -45)
+            ax.view_init(*view_init)
         plt.tight_layout()
         
         # Save and close
