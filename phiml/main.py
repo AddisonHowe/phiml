@@ -8,7 +8,7 @@ from datetime import datetime
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-from dataset import LandscapeSimulationDataset
+from .dataset import LandscapeSimulationDataset
 from .model import PhiNN
 from .model_training import train_model
 from .helpers import select_device, jump_function, mean_cov_loss, kl_divergence_est
