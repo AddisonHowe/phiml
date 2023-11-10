@@ -39,6 +39,7 @@ def train_model(model, dt, loss_fn, optimizer,
     best_vloss = 1_000_000
     loss_hist_train = []
     loss_hist_valid = []
+    sigma_hist = []
     for epoch in range(num_epochs):
         print(f'EPOCH {epoch + 1}:', flush=True)
         etime0 = time.time()
@@ -72,6 +73,9 @@ def train_model(model, dt, loss_fn, optimizer,
         loss_hist_valid.append(avg_vloss)
         np.save(f"{outdir}/training_loss_history.npy", loss_hist_train)
         np.save(f"{outdir}/validation_loss_history.npy", loss_hist_valid)
+
+        sigma_hist.append(model.get_sigma())
+        np.save(f"{outdir}/sigma_history.npy", sigma_hist)
 
         # Track best performance, and save the model's state
         if avg_vloss < best_vloss:

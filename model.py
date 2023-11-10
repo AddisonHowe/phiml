@@ -82,9 +82,9 @@ class PhiNN(nn.Module):
         if self.infer_noise:
             self.logsigma = torch.nn.Parameter(torch.tensor(np.log(sigma)))
         else:
-            if self.device != 'cpu':
-                self.sigma = torch.tensor(sigma, dtype=self.dtype, 
-                                          device=device)
+            self.sigma = torch.tensor(sigma, dtype=self.dtype, 
+                                      device=device)
+            self.logsigma = torch.log(self.sigma)
 
         # Potential Neural Network: Maps ndims to a scalar.
         self.phi_nn = self._construct_phi_nn(
@@ -155,12 +155,8 @@ class PhiNN(nn.Module):
         Returns:
             Tensor of shape (b,n,d).
         """
-        if self.infer_noise:
-            return torch.exp(self.logsigma) * torch.ones(
-                y.shape, dtype=self.dtype, device=self.device)
-        else:
-            return self.sigma * torch.ones(
-                y.shape, dtype=self.dtype, device=self.device)
+        return torch.exp(self.logsigma) * torch.ones(
+            y.shape, dtype=self.dtype, device=self.device)
     
     def phi(self, y):
         """Potential value, without tilt. 
