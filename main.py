@@ -68,6 +68,7 @@ def parse_args(args):
                         choices=['sgd', 'adam', 'rms'])
     parser.add_argument('--learning_rate', type=float, default=1e-3)
     parser.add_argument('--momentum', type=float, default=0.9)
+    parser.add_argument('--weight_decay', type=float, default=0.)
     
     parser.add_argument('--dtype', type=str, default="float32", 
                         choices=['float32', 'float64'])
@@ -104,6 +105,7 @@ def main(args):
     optimization_method = args.optimizer
     learning_rate = args.learning_rate
     momentum = args.momentum
+    weight_decay = args.weight_decay
     cont_path = args.continuation
     loss_fn_key = args.loss
     signal_function_key = args.signal_function
@@ -235,17 +237,20 @@ def select_optimizer(model, optimization_method, args):
             model.parameters(), 
             lr=args.learning_rate, 
             momentum=args.momentum,
+            weight_decay=args.weight_decay,
         )
     elif optimization_method == 'adam':
         optimizer = torch.optim.Adam(
             model.parameters(), 
             lr=args.learning_rate,
+            weight_decay=args.weight_decay,
         )
     elif optimization_method == 'rms':
         optimizer = torch.optim.RMSprop(
             model.parameters(), 
             lr=args.learning_rate,
             momentum=args.momentum,
+            weight_decay=args.weight_decay,
         )
     else:
         msg = f"{optimization_method} optimization not implemented."
