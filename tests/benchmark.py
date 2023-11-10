@@ -80,8 +80,10 @@ class TestBenchmarkModel:
         x1 = x1.to(device)
         dt = 1e-1
         model(inputs, dt=dt)  # warm-up
-        with profiler.profile(activities=[ProfilerActivity.CPU], 
-                              profile_memory=False,) as prof:
+        with profiler.profile(
+                activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], 
+                profile_memory=False,
+                ) as prof:
             with record_function("forward"):
                 prediction = model(inputs, dt=dt)
             with record_function("loss"):    
@@ -89,5 +91,16 @@ class TestBenchmarkModel:
             with record_function("backward"):
                 loss.backward()
     
+        print("Results for infer_noise: {} b: {}, loss: {}".format(
+            infer_noise, batch_size, loss_fn
+        ))
         print(prof.key_averages(group_by_stack_n=5).table(
-              sort_by='self_cpu_time_total', row_limit=10))
+              sort_by='cuda_time_total', row_limit=30))
+        print(prof.key_averages(group_by_stack_n=5).table(
+              sort_by='cuda_time_total', row_limit=30))
+        
+        prof.export_chrome_trace(
+            "trace_{}_{}_{}_{}_{}.json".format(
+                device, dtype, infer_noise, batch_size, loss_fn
+            )
+        )
