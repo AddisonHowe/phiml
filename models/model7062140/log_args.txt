@@ -3,7 +3,7 @@ continuation : None
 dt : 0.1
 dtype : 'float32'
 final_act : 'softplus'
-hidden_acts : [<class 'torch.nn.modules.activation.Softplus'>, <class 'torch.nn.modules.activation.Tanh'>, <class 'torch.nn.modules.activation.Softplus'>, <class 'torch.nn.modules.activation.Tanh'>, <class 'torch.nn.modules.activation.Softplus'>]
+hidden_acts : ['softplus', 'tanh', 'softplus', 'tanh', 'softplus']
 hidden_dims : [16, 32, 32, 32, 16]
 infer_noise : True
 layer_normalize : False

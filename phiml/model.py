@@ -305,8 +305,11 @@ class PhiNN(nn.Module):
         # Convert singular hidden activation to a list.
         if hidden_acts is None or isinstance(hidden_acts, (str, type)):
             hidden_acts = [hidden_acts] * nlayers
-        elif isinstance(hidden_acts, list) and len(hidden_acts) == 1:
-            hidden_acts = hidden_acts * nlayers
+        elif isinstance(hidden_acts, list):
+            if len(hidden_acts) == 1:
+                hidden_acts = hidden_acts * nlayers
+            else:
+                hidden_acts = hidden_acts.copy()  # avoid overwrite of original
         # Check number of hidden activations
         if len(hidden_acts) != nlayers:
             msg = "Number of activation functions must match number of " + \
