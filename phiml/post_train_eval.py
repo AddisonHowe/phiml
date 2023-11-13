@@ -3,8 +3,8 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
-from .model import PhiNN
-from .helpers import jump_function
+from phiml.model import PhiNN
+from phiml.helpers import jump_function
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-m', '--model', type=str, required=True)

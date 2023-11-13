@@ -252,7 +252,6 @@ class PhiNN(nn.Module):
                 y = self.step(ts, y, sigparams, dt, dw)
                 ts += dt
                 y_hist.append(y.detach().numpy())
-
             return y, y_hist
         else:
             for i in range(nsteps):
@@ -416,6 +415,32 @@ class PhiNN(nn.Module):
                     layer.weight = torch.nn.Parameter(w)
                     count += 1
     
+    ##########################
+    ##  Simulation Methods  ##
+    ##########################
+
+    def simulate_single_batch(self, t0, t1, y0, sigparams, dt):
+        """Simulate a single batch example evolving between t0 and t1.
+        Args:
+            t0 (float) : Start time.
+            t1 (float) : End time.
+            y0 (array-like) : Initial state. Shape (n,d).
+            sig_params (array-like) : Signal parameters. Shape (nsigparams,).
+            dt (float) : Euler-Maruyama timestep.
+        Returns:
+            ...
+        """
+        if self.training:
+            warnings.warn("Not simulating. Currently training=True.")
+            return
+        t0 = torch.tensor(np.array([t0]), dtype=self.dtype, device=self.device)
+        t1 = torch.tensor(np.array([t1]), dtype=self.dtype, device=self.device)
+        y0 = torch.tensor(np.array([y0]), dtype=self.dtype, device=self.device)
+        sp = torch.tensor(np.array([sigparams]), 
+                          dtype=self.dtype, device=self.device)
+        y1, yhist = self.simulate_forward(t0, t1, y0, sp, dt=dt, history=True)
+        return y1.detach().cpu().numpy()[0], np.array([y[0] for y in yhist])
+
     ########################
     ##  Plotting Methods  ##
     ########################

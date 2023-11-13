@@ -22,6 +22,10 @@ def parse_args(args):
     parser.add_argument('--noise_schedule', type=str, default='constant')
     parser.add_argument('--noise_args', type=float, nargs='+',
                         default=[0.01])
+    parser.add_argument('--p10_range', type=float, nargs=2, default=[-1, 1])
+    parser.add_argument('--p20_range', type=float, nargs=2, default=[-1, 1])
+    parser.add_argument('--p11_range', type=float, nargs=2, default=[-1, 1])
+    parser.add_argument('--p21_range', type=float, nargs=2, default=[-1, 1])
     parser.add_argument('--animate', action='store_true')
     parser.add_argument('--duration', type=int, default=10, 
                         help="Duration of animation in seconds")
@@ -55,6 +59,10 @@ def main(args):
     param_schedule = args.param_schedule
     noise_schedule = args.noise_schedule
     noise_args = args.noise_args
+    p10_range = args.p10_range
+    p20_range = args.p20_range
+    p11_range = args.p11_range
+    p21_range = args.p21_range
     seed = args.seed
 
     rng = np.random.default_rng(seed=seed)
@@ -72,7 +80,12 @@ def main(args):
             simdir = f"{outdir}/sim{nsim}"
             os.makedirs(simdir, exist_ok=True)
             
-            param_args = get_param_args(tfin, rng=rng)
+            param_args = get_param_args(
+                tfin, 
+                p10_range=p10_range, p20_range=p20_range, 
+                p11_range=p11_range, p21_range=p21_range, 
+                rng=rng
+            )
 
             with open(f"{simdir}/params.txt", 'w') as f:
                 f.write(str(args) + f'\nparam_args: {str(param_args)}')

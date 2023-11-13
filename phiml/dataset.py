@@ -88,7 +88,7 @@ class LandscapeSimulationDataset(Dataset):
         if show: plt.show()
         return ax
 
-    def animate(self, simidx, **kwargs):
+    def animate(self, simidx, interval=50, **kwargs):
         """Animate a given simulation"""
         idx0 = int(simidx * len(self) // self.nsims)
         idx1 = idx0 + int(len(self) // self.nsims)
@@ -103,6 +103,8 @@ class LandscapeSimulationDataset(Dataset):
         video = np.array(video)
 
         fig = plt.figure()
+        plt.axis('off')
+        plt.tight_layout()
         im = plt.imshow(video[0,:,:,:])
         plt.close() 
         def init():
@@ -115,7 +117,7 @@ class LandscapeSimulationDataset(Dataset):
         anim = animation.FuncAnimation(
             fig, ani_func, init_func=init, 
             frames=video.shape[0],
-            interval=50
+            interval=interval,
         )
         return anim.to_html5_video()
 
