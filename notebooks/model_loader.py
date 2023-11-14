@@ -21,7 +21,7 @@ def load_args_from_log(logfilepath, args_to_load=ARGS_TO_LOAD):
                     args[key] = eval(val)
     return args
 
-def load_model_directory(modeldir, modelname):
+def load_model_directory(modeldir, modelname, verbosity=1):
     loss_hist_train = np.load(f"{modeldir}/training_loss_history.npy")
     loss_hist_valid = np.load(f"{modeldir}/validation_loss_history.npy")
 
@@ -30,10 +30,9 @@ def load_model_directory(modeldir, modelname):
 
     best_idx = np.argmin(loss_hist_valid)
     model_fpath = f"{modeldir}/{modelname}_{best_idx}.pth"
-    print(f"Best model: {model_fpath}")
+    if verbosity > 0: print(f"Best model: {model_fpath}")
 
     modelargs = load_args_from_log(f"{modeldir}/log_args.txt")
-    print("Args:", modelargs)
 
     f_signal = lambda t, p: jump_function(t, p[...,0], p[...,1:3], p[...,3:])
     model = PhiNN(
@@ -50,7 +49,7 @@ def load_model_directory(modeldir, modelname):
         dtype=torch.float32 if modelargs['dtype']=='float32' else torch.float64,
         sample_cells=True,
     )
-
+    
     model.load_state_dict(torch.load(model_fpath, 
                                      map_location=torch.device('cpu')))
     model.eval();
