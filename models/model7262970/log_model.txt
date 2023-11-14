@@ -1,0 +1,41 @@
+_backward_hooks : OrderedDict()
+_buffers : OrderedDict()
+_forward_hooks : OrderedDict()
+_forward_pre_hooks : OrderedDict()
+_is_full_backward_hook : None
+_load_state_dict_pre_hooks : OrderedDict()
+_modules : OrderedDict([('phi_nn', Sequential(
+  (0): Linear(in_features=2, out_features=16, bias=True)
+  (1): Softplus(beta=1, threshold=20)
+  (2): Linear(in_features=16, out_features=32, bias=True)
+  (3): Softplus(beta=1, threshold=20)
+  (4): Linear(in_features=32, out_features=32, bias=True)
+  (5): Softplus(beta=1, threshold=20)
+  (6): Linear(in_features=32, out_features=16, bias=True)
+  (7): Softplus(beta=1, threshold=20)
+  (8): Linear(in_features=16, out_features=1, bias=True)
+)), ('tilt_nn', Sequential(
+  (0): Linear(in_features=2, out_features=2, bias=False)
+))])
+_non_persistent_buffers_set : set()
+_parameters : OrderedDict()
+_phi_summed : <function PhiNN.__init__.<locals>.<lambda> at 0x2ba7f80a41f0>
+_state_dict_hooks : OrderedDict()
+device : 'cuda'
+dtype : torch.float32
+f_signal : <function get_signal_function.<locals>.<lambda> at 0x2ba7f80a4160>
+final_act : None
+hidden_acts : [<class 'torch.nn.modules.activation.Softplus'>, <class 'torch.nn.modules.activation.Softplus'>, <class 'torch.nn.modules.activation.Softplus'>, <class 'torch.nn.modules.activation.Softplus'>]
+hidden_dims : [16, 32, 32, 16]
+infer_noise : False
+logsigma : tensor(-4.6052, device='cuda:0')
+ncells : 100
+ndim : 2
+nsig : 2
+nsigparams : 5
+rng : Generator(PCG64) at 0x2BA7EBBD0F20
+sample_cells : True
+sigma : tensor(0.0100, device='cuda:0')
+testing : False
+testing_dw : None
+training : True
