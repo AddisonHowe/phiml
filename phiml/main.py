@@ -56,6 +56,27 @@ def parse_args(args):
                         help="Noise level if not inferring sigma." + \
                         "Otherwise, the initial value for the sigma parameter.")
 
+    parser.add_argument('--init_phi_weights_method', type=str, 
+                        default='xavier_uniform', 
+                        choices=[None, 'xavier_uniform', 'constant', 'normal'])
+    parser.add_argument('--init_phi_weights_args', type=float, nargs='+', 
+                        default=[])
+    parser.add_argument('--init_phi_bias_method', type=str, 
+                        default='constant', 
+                        choices=[None, 'xavier_uniform', 'constant', 'normal'])
+    parser.add_argument('--init_phi_bias_args', type=float, nargs='+', 
+                        default=0.)
+    parser.add_argument('--init_tilt_weights_method', type=str, 
+                        default='xavier_uniform', 
+                        choices=[None, 'xavier_uniform', 'constant', 'normal'])
+    parser.add_argument('--init_tilt_weights_args', type=float, nargs='+', 
+                        default=0.)
+    parser.add_argument('--init_tilt_bias_method', type=str, 
+                        default=None, 
+                        choices=[None, 'xavier_uniform', 'constant', 'normal'])
+    parser.add_argument('--init_tilt_bias_args', type=float, nargs='+', 
+                        default=None)
+
     # Loss function options
     parser.add_argument('--loss', type=str, default="kl", 
                         choices=['kl', 'mcd'], 
@@ -97,6 +118,14 @@ def main(args):
     hidden_acts = args.hidden_acts
     final_act = args.final_act
     layer_normalize = args.layer_normalize
+    init_phi_weights_method = args.init_phi_weights_method
+    init_phi_weights_args = args.init_phi_weights_args
+    init_phi_bias_method = args.init_phi_bias_method
+    init_phi_bias_args = args.init_phi_bias_args
+    init_tilt_weights_method = args.init_tilt_weights_method
+    init_tilt_weights_args = args.init_tilt_weights_args
+    init_tilt_bias_method = args.init_tilt_bias_method
+    init_tilt_bias_args = args.init_tilt_bias_args
     infer_noise = args.infer_noise
     sigma = args.sigma
     use_gpu = args.use_gpu
@@ -147,6 +176,14 @@ def main(args):
         layer_normalize=layer_normalize,
         infer_noise=infer_noise,
         sigma=sigma,
+        init_phi_weights_method=init_phi_weights_method,
+        init_phi_weights_args=init_phi_weights_args,
+        init_phi_bias_method=init_phi_bias_method,
+        init_phi_bias_args=init_phi_bias_args,
+        init_tilt_weights_method=init_tilt_weights_method,
+        init_tilt_weights_args=init_tilt_weights_args,
+        init_tilt_bias_method=init_tilt_bias_method,
+        init_tilt_bias_args=init_tilt_bias_args,
         device=device,
         dtype=dtype,
         sample_cells=True,

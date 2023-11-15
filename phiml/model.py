@@ -18,6 +18,13 @@ class PhiNN(nn.Module):
         'elu' : nn.ELU,
         'tanh' : nn.Tanh,
     }
+
+    _init_method_keys = {
+        'none' : None,
+        'xavier_uniform' : nn.init.xavier_uniform_,  # no parameters
+        'constant' : nn.init.constant_,  # parameters: constant value
+        'normal' : nn.init.normal_,  # parameters: mean, std
+    }
     
     def __init__(self, 
             ndim=2, 
@@ -34,8 +41,16 @@ class PhiNN(nn.Module):
             sigma=1e-3,
             include_signal_bias=False,
             init_weights=True,
-            init_weight_values_phi=None,
-            init_weight_values_tilt=None,
+            init_phi_weights_method='xavier_uniform',
+            init_phi_weights_args=[],
+            init_phi_bias_method='constant',
+            init_phi_bias_args=[0.],
+            init_tilt_weights_method='xavier_uniform',
+            init_tilt_weights_args=[],
+            init_tilt_bias_method=None,
+            init_tilt_bias_args=[],
+            init_weight_values_phi=None,  # for testing
+            init_weight_values_tilt=None,  # for testing
             device='cpu',
             dtype=torch.float32,
             rng=None,
@@ -104,6 +119,14 @@ class PhiNN(nn.Module):
                 vals_phi=init_weight_values_phi,
                 vals_tilt=init_weight_values_tilt,
                 include_signal_bias=include_signal_bias,
+                phi_w_init_method=init_phi_weights_method,
+                phi_w_init_args=init_phi_weights_args,
+                phi_b_init_method=init_phi_bias_method,
+                phi_b_init_args=init_phi_bias_args,
+                tilt_w_init_method=init_tilt_weights_method,
+                tilt_w_init_args=init_tilt_weights_args,
+                tilt_b_init_method=init_tilt_bias_method,
+                tilt_b_init_args=init_tilt_bias_args,
             )
         
         # Summed version of phi for computing gradients efficiently
@@ -379,21 +402,40 @@ class PhiNN(nn.Module):
         return nn.Sequential(*layer_list)
 
     def initialize_weights(self, testing=False, vals_phi=None, vals_tilt=None,
-                           include_signal_bias=False):
+                           include_signal_bias=False,
+                           phi_w_init_method='xavier_uniform',
+                           phi_w_init_args=[],
+                           phi_b_init_method='constant',
+                           phi_b_init_args=[0.],
+                           tilt_w_init_method='xavier_uniform',
+                           tilt_w_init_args=[],
+                           tilt_b_init_method='constant',
+                           tilt_b_init_args=[0.],
+                           ):
         if testing:
             self._initialize_test_weights(vals_phi, vals_tilt)
             return
+        
         # Weight initialization for Phi
+        phi_w_init_func = self._get_nn_init_func(phi_w_init_method)
+        phi_b_init_func = self._get_nn_init_func(phi_b_init_method)
+        phi_w_init_args = self._get_nn_init_args(phi_w_init_args)
+        phi_b_init_args = self._get_nn_init_args(phi_b_init_args)
         for layer in self.phi_nn:
             if isinstance(layer, nn.Linear):
-                nn.init.xavier_uniform_(layer.weight)
-                nn.init.constant_(layer.bias, 0.)
+                phi_w_init_func(layer.weight, *phi_w_init_args)
+                phi_b_init_func(layer.bias, *phi_b_init_args)
+
         # Weight initialization for Tilt
+        tilt_w_init_func = self._get_nn_init_func(tilt_w_init_method)
+        tilt_b_init_func = self._get_nn_init_func(tilt_b_init_method)
+        tilt_w_init_args = self._get_nn_init_args(tilt_w_init_args)
+        tilt_b_init_args = self._get_nn_init_args(tilt_b_init_args)
         for layer in self.tilt_nn:
             if isinstance(layer, nn.Linear):
-                nn.init.xavier_uniform_(layer.weight)
+                tilt_w_init_func(layer.weight, *tilt_w_init_args)
                 if include_signal_bias:
-                    nn.init.constant_(layer.bias, 0.)
+                    tilt_b_init_func(layer.bias, *tilt_b_init_args)
         
     def _initialize_test_weights(self, vals_phi=None, vals_tilt=None):
         # Initialize weights for Phi Net
@@ -664,4 +706,21 @@ class PhiNN(nn.Module):
                 )
                 y0_samp[bidx,:] = y0[bidx,samp_idxs]
         return y0_samp
+        
+    def _get_nn_init_func(self, init_method):
+        if init_method is None:
+            init_method = 'none'
+        init_method = init_method.lower()
+        if init_method not in self._init_method_keys:
+            msg = f"Unknown nn layer initialization method: {init_method}"
+            raise RuntimeError(msg)
+        return self._init_method_keys[init_method]
+    
+    def _get_nn_init_args(self, init_args):
+        if init_args is None:
+            return []
+        elif isinstance(init_args, list):
+            return init_args
+        else:
+            return [init_args]
         
