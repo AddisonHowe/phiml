@@ -1,0 +1,221 @@
+Slurm job ID: 7342176
+args: Namespace(batch_size=50, continuation=None, dt=0.1, dtype='float32', final_act='None', hidden_acts=['softplus'], hidden_dims=[16, 32, 32, 16], infer_noise=True, init_phi_bias_args=0.0, init_phi_bias_method='constant', init_phi_weights_args=None, init_phi_weights_method='xavier_uniform', init_tilt_bias_args=None, init_tilt_bias_method=None, init_tilt_weights_args=None, init_tilt_weights_method='xavier_uniform', layer_normalize=False, learning_rate=0.001, loss='mcd', momentum=0.9, name='model7342176', ncells=100, ndims=2, nsigs=2, nsims_training=1000, nsims_validation=200, num_epochs=50, optimizer='rms', outdir='out/model_training/model7342176', plot=True, seed=0, sigma=0.01, signal_function='jump', timestamp=False, training_data='data/model_training_data_3', use_gpu=True, validation_data='data/model_validation_data_3', weight_decay=0.0)
+Using device: cuda
+Using seed: 1047575508
+EPOCH 1:
+	batch 50 loss: 2.103681914806366
+	batch 100 loss: 0.6109249621629715
+LOSS [train: 0.6109249621629715] [valid: 0.5424598589539528] TIME [epoch: 263 sec]
+Saving model.
+EPOCH 2:
+	batch 50 loss: 0.5980765521526337
+	batch 100 loss: 0.5294197124242782
+LOSS [train: 0.5294197124242782] [valid: 0.5632852658629417] TIME [epoch: 260 sec]
+EPOCH 3:
+	batch 50 loss: 0.5614415150880814
+	batch 100 loss: 0.5357598900794983
+LOSS [train: 0.5357598900794983] [valid: 0.5680997014045716] TIME [epoch: 261 sec]
+EPOCH 4:
+	batch 50 loss: 0.5097064107656479
+	batch 100 loss: 0.5155550467967988
+LOSS [train: 0.5155550467967988] [valid: 0.4943801432847977] TIME [epoch: 262 sec]
+Saving model.
+EPOCH 5:
+	batch 50 loss: 0.533898486495018
+	batch 100 loss: 0.47470070004463194
+LOSS [train: 0.47470070004463194] [valid: 0.48167316764593127] TIME [epoch: 261 sec]
+Saving model.
+EPOCH 6:
+	batch 50 loss: 0.4956249904632568
+	batch 100 loss: 0.4647484052181244
+LOSS [train: 0.4647484052181244] [valid: 0.4470819294452667] TIME [epoch: 262 sec]
+Saving model.
+EPOCH 7:
+	batch 50 loss: 0.45968436300754545
+	batch 100 loss: 0.48522388815879824
+LOSS [train: 0.48522388815879824] [valid: 0.4736215189099312] TIME [epoch: 262 sec]
+EPOCH 8:
+	batch 50 loss: 0.8400999432802201
+	batch 100 loss: 2.302872542142868
+LOSS [train: 2.302872542142868] [valid: 2.2568896055221557] TIME [epoch: 262 sec]
+EPOCH 9:
+	batch 50 loss: 2.2021925806999207
+	batch 100 loss: 1.1419054520130159
+LOSS [train: 1.1419054520130159] [valid: 0.8854382410645485] TIME [epoch: 262 sec]
+EPOCH 10:
+	batch 50 loss: 0.7288988721370697
+	batch 100 loss: 0.5175942581892014
+LOSS [train: 0.5175942581892014] [valid: 0.46761746406555177] TIME [epoch: 261 sec]
+EPOCH 11:
+	batch 50 loss: 0.45878760039806366
+	batch 100 loss: 0.5758386364579201
+LOSS [train: 0.5758386364579201] [valid: 1.0125086933374405] TIME [epoch: 261 sec]
+EPOCH 12:
+	batch 50 loss: 1.1519361174106597
+	batch 100 loss: 0.9522886908054352
+LOSS [train: 0.9522886908054352] [valid: 0.746733084321022] TIME [epoch: 262 sec]
+EPOCH 13:
+	batch 50 loss: 0.8675603830814361
+	batch 100 loss: 0.9066875815391541
+LOSS [train: 0.9066875815391541] [valid: 0.8896389931440354] TIME [epoch: 259 sec]
+EPOCH 14:
+	batch 50 loss: 0.8958765769004822
+	batch 100 loss: 0.8666260981559754
+LOSS [train: 0.8666260981559754] [valid: 0.8836419492959976] TIME [epoch: 253 sec]
+EPOCH 15:
+	batch 50 loss: 0.8751845395565033
+	batch 100 loss: 0.869012953042984
+LOSS [train: 0.869012953042984] [valid: 0.8684855431318284] TIME [epoch: 253 sec]
+EPOCH 16:
+	batch 50 loss: 0.836993260383606
+	batch 100 loss: 0.8711005616188049
+LOSS [train: 0.8711005616188049] [valid: 0.8309375226497651] TIME [epoch: 253 sec]
+EPOCH 17:
+	batch 50 loss: 0.6036979120969772
+	batch 100 loss: 0.36319656878709794
+LOSS [train: 0.36319656878709794] [valid: 0.3440345712006092] TIME [epoch: 253 sec]
+Saving model.
+EPOCH 18:
+	batch 50 loss: 0.31389110565185546
+	batch 100 loss: 0.2833743417263031
+LOSS [train: 0.2833743417263031] [valid: 0.19645053073763846] TIME [epoch: 252 sec]
+Saving model.
+EPOCH 19:
+	batch 50 loss: 0.2295423401892185
+	batch 100 loss: 0.3089450612664223
+LOSS [train: 0.3089450612664223] [valid: 0.21936919838190078] TIME [epoch: 252 sec]
+EPOCH 20:
+	batch 50 loss: 0.19969992309808732
+	batch 100 loss: 0.17089424550533294
+LOSS [train: 0.17089424550533294] [valid: 0.23302867785096168] TIME [epoch: 252 sec]
+EPOCH 21:
+	batch 50 loss: 0.2627221515774727
+	batch 100 loss: 0.21429286494851113
+LOSS [train: 0.21429286494851113] [valid: 0.14532526172697544] TIME [epoch: 252 sec]
+Saving model.
+EPOCH 22:
+	batch 50 loss: 0.14543353766202927
+	batch 100 loss: 0.15268434718251228
+LOSS [train: 0.15268434718251228] [valid: 0.18236928880214692] TIME [epoch: 252 sec]
+EPOCH 23:
+	batch 50 loss: 0.1643926417827606
+	batch 100 loss: 0.1292591957747936
+LOSS [train: 0.1292591957747936] [valid: 0.12776798717677593] TIME [epoch: 254 sec]
+Saving model.
+EPOCH 24:
+	batch 50 loss: 0.12148779705166816
+	batch 100 loss: 0.1365901517868042
+LOSS [train: 0.1365901517868042] [valid: 0.12290354147553444] TIME [epoch: 252 sec]
+Saving model.
+EPOCH 25:
+	batch 50 loss: 0.11494669198989868
+	batch 100 loss: 0.10460012130439282
+LOSS [train: 0.10460012130439282] [valid: 0.12331941910088062] TIME [epoch: 252 sec]
+EPOCH 26:
+	batch 50 loss: 0.09804794125258923
+	batch 100 loss: 0.08745953798294068
+LOSS [train: 0.08745953798294068] [valid: 0.09363873191177845] TIME [epoch: 252 sec]
+Saving model.
+EPOCH 27:
+	batch 50 loss: 0.09992141880095005
+	batch 100 loss: 0.0950167392194271
+LOSS [train: 0.0950167392194271] [valid: 0.08766877949237824] TIME [epoch: 252 sec]
+Saving model.
+EPOCH 28:
+	batch 50 loss: 0.09576240077614784
+	batch 100 loss: 0.08731662973761559
+LOSS [train: 0.08731662973761559] [valid: 0.09731084518134595] TIME [epoch: 252 sec]
+EPOCH 29:
+	batch 50 loss: 0.08149434275925159
+	batch 100 loss: 0.09704881064593791
+LOSS [train: 0.09704881064593791] [valid: 0.05170751819387078] TIME [epoch: 252 sec]
+Saving model.
+EPOCH 30:
+	batch 50 loss: 0.0800883162766695
+	batch 100 loss: 0.034095275439322
+LOSS [train: 0.034095275439322] [valid: 0.018015580251812935] TIME [epoch: 252 sec]
+Saving model.
+EPOCH 31:
+	batch 50 loss: 0.019649513391777874
+	batch 100 loss: 0.03005941903218627
+LOSS [train: 0.03005941903218627] [valid: 0.02903570793569088] TIME [epoch: 255 sec]
+EPOCH 32:
+	batch 50 loss: 0.015985753731802107
+	batch 100 loss: 0.016292886305600406
+LOSS [train: 0.016292886305600406] [valid: 0.009091981139499694] TIME [epoch: 256 sec]
+Saving model.
+EPOCH 33:
+	batch 50 loss: 0.017716403938829898
+	batch 100 loss: 0.024157084785401822
+LOSS [train: 0.024157084785401822] [valid: 0.0228190413210541] TIME [epoch: 256 sec]
+EPOCH 34:
+	batch 50 loss: 0.01654015534091741
+	batch 100 loss: 0.0122671755310148
+LOSS [train: 0.0122671755310148] [valid: 0.0067761808517389] TIME [epoch: 254 sec]
+Saving model.
+EPOCH 35:
+	batch 50 loss: 0.016165480776689948
+	batch 100 loss: 0.021284340238198637
+LOSS [train: 0.021284340238198637] [valid: 0.029568297788500786] TIME [epoch: 252 sec]
+EPOCH 36:
+	batch 50 loss: 0.01787388015538454
+	batch 100 loss: 0.058973323944956066
+LOSS [train: 0.058973323944956066] [valid: 0.0157642561243847] TIME [epoch: 252 sec]
+EPOCH 37:
+	batch 50 loss: 0.01080561375245452
+	batch 100 loss: 0.0098450848297216
+LOSS [train: 0.0098450848297216] [valid: 0.007822713360656052] TIME [epoch: 253 sec]
+EPOCH 38:
+	batch 50 loss: 0.017165524964220823
+	batch 100 loss: 0.009903976703062653
+LOSS [train: 0.009903976703062653] [valid: 0.007298263837583363] TIME [epoch: 252 sec]
+EPOCH 39:
+	batch 50 loss: 0.007592062200419605
+	batch 100 loss: 0.010708933002315462
+LOSS [train: 0.010708933002315462] [valid: 0.007231919723562896] TIME [epoch: 255 sec]
+EPOCH 40:
+	batch 50 loss: 0.011084909355267882
+	batch 100 loss: 0.012355730291455985
+LOSS [train: 0.012355730291455985] [valid: 0.009958586480934173] TIME [epoch: 256 sec]
+EPOCH 41:
+	batch 50 loss: 0.011115422360599042
+	batch 100 loss: 0.011845144983381033
+LOSS [train: 0.011845144983381033] [valid: 0.009888927219435573] TIME [epoch: 256 sec]
+EPOCH 42:
+	batch 50 loss: 0.008740724734961987
+	batch 100 loss: 0.01636165165808052
+LOSS [train: 0.01636165165808052] [valid: 0.014246746525168419] TIME [epoch: 256 sec]
+EPOCH 43:
+	batch 50 loss: 0.013834843086078763
+	batch 100 loss: 0.010839371182955802
+LOSS [train: 0.010839371182955802] [valid: 0.009304557251743973] TIME [epoch: 256 sec]
+EPOCH 44:
+	batch 50 loss: 0.00996989119797945
+	batch 100 loss: 0.00883943345863372
+LOSS [train: 0.00883943345863372] [valid: 0.005936456727795303] TIME [epoch: 255 sec]
+Saving model.
+EPOCH 45:
+	batch 50 loss: 0.015416787974536418
+	batch 100 loss: 0.008233029968105257
+LOSS [train: 0.008233029968105257] [valid: 0.006142626528162509] TIME [epoch: 256 sec]
+EPOCH 46:
+	batch 50 loss: 0.009061296544969082
+	batch 100 loss: 0.01884758299216628
+LOSS [train: 0.01884758299216628] [valid: 0.007063057296909392] TIME [epoch: 255 sec]
+EPOCH 47:
+	batch 50 loss: 0.00869222457986325
+	batch 100 loss: 0.012696149749681354
+LOSS [train: 0.012696149749681354] [valid: 0.009837373718619346] TIME [epoch: 255 sec]
+EPOCH 48:
+	batch 50 loss: 0.01020492467097938
+	batch 100 loss: 0.010619475254788995
+LOSS [train: 0.010619475254788995] [valid: 0.00740281892940402] TIME [epoch: 257 sec]
+EPOCH 49:
+	batch 50 loss: 0.009427531296387315
+	batch 100 loss: 0.031063790251500904
+LOSS [train: 0.031063790251500904] [valid: 0.036717490013688805] TIME [epoch: 255 sec]
+EPOCH 50:
+	batch 50 loss: 0.01591750007122755
+	batch 100 loss: 0.01466088660992682
+LOSS [train: 0.01466088660992682] [valid: 0.009668379928916693] TIME [epoch: 256 sec]
+Finished training in 12903.172 seconds.
