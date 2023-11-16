@@ -26,6 +26,9 @@ def load_args_from_log(logfilepath, args_to_load=ARGS_TO_LOAD):
                     args[key] = eval(val)
     return args
 
+def load_sigma_history(modeldir):
+    return np.load(f"{modeldir}/sigma_history.npy")
+
 def load_model_directory(modeldir, modelname, verbosity=1):
     loss_hist_train = np.load(f"{modeldir}/training_loss_history.npy")
     loss_hist_valid = np.load(f"{modeldir}/validation_loss_history.npy")

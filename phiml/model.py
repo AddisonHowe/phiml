@@ -487,9 +487,10 @@ class PhiNN(nn.Module):
     ##  Plotting Methods  ##
     ########################
 
-    def plot_phi(self, r=4, res=50, plot3d=False, **kwargs):
+    def plot_phi(self, signal=(0, 0), r=4, res=50, plot3d=False, **kwargs):
         """Plot the scalar function phi.
         Args:
+            signal (tuple) :
             r (int) : 
             res (int) :
             plot3d (bool) :
@@ -551,8 +552,17 @@ class PhiNN(nn.Module):
         xs, ys = np.meshgrid(x, y)
         z = np.array([xs.flatten(), ys.flatten()]).T[None,...]
         z = torch.tensor(z, requires_grad=True, 
-                         dtype=torch.float32, device=self.device)
+                         dtype=self.dtype, device=self.device)
         phi = self.phi(z).detach().cpu().numpy()  # move to cpu
+
+        # Compute tilt
+        tt = torch.tensor([0])
+        signal_params = np.array([10, *signal, *signal])
+        signal_params = torch.tensor(signal_params, dtype=self.dtype)[None,:]
+        tilt = self.grad_tilt(tt, signal_params).detach().numpy()[0]
+
+        # Compute tilted landscape
+        phi = phi.reshape(xs.shape) + xs*tilt[0] + ys*tilt[1]
         
         # Normalization
         if normalize:

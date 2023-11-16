@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import animation
 import torch
 
 def plot_training_loss_history(loss_hist_train, startidx=0, 
@@ -28,6 +29,55 @@ def plot_validation_loss_history(loss_hist_valid, startidx=0,
     if saveas: plt.savefig(saveas)
     return ax
 
+def plot_loss_history(loss_hist_train, loss_hist_valid, startidx=0, 
+                      log=False, title="Loss History", 
+                      saveas=None):
+    fig, ax = plt.subplots(1, 1)
+    erange = np.arange(startidx, len(loss_hist_train))
+    fplot = ax.semilogy if log else ax.plot
+    fplot(1 + erange, loss_hist_train[erange], 'r.-', 
+          label="Training")
+    fplot(1 + erange, loss_hist_valid[erange], 'b.-', 
+          label="Validation")
+    ax.set_xlabel(f"epoch")
+    ax.set_ylabel(f"loss")
+    ax.set_title(title)
+    ax.legend()
+    if saveas: plt.savefig(saveas)
+    return ax
+
+def plot_train_vs_valid_history(loss_hist_train, loss_hist_valid, startidx=0,
+                                log=True, title="Training vs Validation Loss",
+                                saveas=None,
+                                ):
+    fig, ax = plt.subplots(1, 1)
+    erange = np.arange(startidx, len(loss_hist_train))
+    fplot = ax.loglog if log else ax.plot
+    fplot(loss_hist_train[erange], loss_hist_valid[erange], 'k.-')
+    fplot(loss_hist_train[erange[0]], loss_hist_valid[erange[0]], 'bo', 
+          label=f'epoch {erange[0]}')
+    fplot(loss_hist_train[erange[-1]], loss_hist_valid[erange[-1]], 'ro', 
+          label=f'epoch {erange[-1]}')
+    ax.set_xlabel(f"Training loss")
+    ax.set_ylabel(f"Validation loss")
+    ax.set_title(title)
+    ax.legend()
+    if saveas: plt.savefig(saveas)
+    return ax
+
+def plot_sigma_history(sigma_history, 
+                       log=False, 
+                       title="Inferred noise parameter", 
+                       saveas=None):
+    fig, ax = plt.subplots(1, 1)
+    fplot = ax.semilogy if log else ax.plot
+    fplot(sigma_history, 'k.-')
+    ax.set_xlabel(f"epoch")
+    ax.set_ylabel(f"inferred $\sigma$")
+    ax.set_title(title)
+    if saveas: plt.savefig(saveas)
+    return ax
+    
 def plot_landscape(
         phi_func, 
         r=2, 
@@ -108,3 +158,45 @@ def plot_landscape(
     if saveas: plt.savefig(saveas)
     
     return ax
+
+def build_video(plot_func, nframes, interval=50):
+    """Construct a video from a sequence of frames.
+    
+    Args:
+        nframes (int) : number of frames.
+        plot_func (callable) : function that takes as input a frame number n  
+            and returns an axis object, the nth frame of the video.
+        interval (int, optional) : number of milliseconds between frames.
+    
+    Returns:
+        animation.FuncAnimation object.
+    """
+    video = []  # Collect frames into an array
+    for idx in range(nframes):
+        ax = plot_func(idx)  # axis plotting function
+        ax.figure.canvas.draw()
+        data = np.frombuffer(ax.figure.canvas.tostring_rgb(), dtype=np.uint8)
+        data = data.reshape(ax.figure.canvas.get_width_height()[::-1] + (3,))
+        video.append(data)
+        plt.close()
+    video = np.array(video)
+
+    fig = plt.figure()
+    plt.axis('off')
+    plt.tight_layout()
+    im = plt.imshow(video[0])
+    plt.close() 
+
+    def init():
+        im.set_data(video[0])
+
+    def ani_func(i):
+        im.set_data(video[i])
+        return im
+
+    anim = animation.FuncAnimation(
+        fig, ani_func, init_func=init,
+        frames=video.shape[0],
+        interval=interval
+    )
+    return anim
