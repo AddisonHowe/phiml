@@ -495,6 +495,7 @@ class PhiNN(nn.Module):
             plot3d (bool) :
             normalize (bool) :
             log_normalize (bool) :
+            clip (float) :
             ax (Axis) :
             figsize (tuple[float]) :
             xlims (tuple[float]) :
@@ -517,6 +518,7 @@ class PhiNN(nn.Module):
         #~~~~~~~~~~~~  process kwargs  ~~~~~~~~~~~~#
         normalize = kwargs.get('normalize', True)
         log_normalize = kwargs.get('log_normalize', True)
+        clip = kwargs.get('clip', None)
         ax = kwargs.get('ax', None)
         figsize = kwargs.get('figsize', (6, 4))
         xlims = kwargs.get('xlims', None)
@@ -558,14 +560,30 @@ class PhiNN(nn.Module):
         if log_normalize:
             phi = np.log(phi)
 
+        # Clipping
+        clip = phi.max() if clip is None else clip
+        if clip < phi.min():
+            warnings.warn(f"Clip value {clip} is below minimum value to plot.")
+            clip = phi.max()
+        under_cutoff = phi <= clip
+        plot_screen = np.ones(under_cutoff.shape)
+        plot_screen[~under_cutoff] = np.nan
+        phi_plot = phi * plot_screen
+
         # Plot phi
         if plot3d:
-            sc = ax.plot_surface(xs, ys, phi.reshape(xs.shape), cmap=cmap)
+            sc = ax.plot_surface(
+                xs, ys, phi_plot.reshape(xs.shape), 
+                vmin=phi[under_cutoff].min(),
+                vmax=phi[under_cutoff].max(),
+                cmap=cmap
+            )
         else:
             sc = ax.pcolormesh(
-                xs, ys, phi.reshape(xs.shape),
+                xs, ys, phi_plot.reshape(xs.shape),
+                vmin=phi[under_cutoff].min(),
+                vmax=phi[under_cutoff].max(),
                 cmap=cmap, 
-                vmin=phi.min(), vmax=phi.max()
             )
         # Colorbar
         if include_cbar:

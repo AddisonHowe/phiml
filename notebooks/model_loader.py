@@ -6,7 +6,12 @@ from phiml.helpers import jump_function
 ARGS_TO_LOAD = {
     'ndims', 'nsigs', 'ncells', 'hidden_dims', 'hidden_acts', 'final_act', 
     'layer_normalize', 'infer_noise', 'sigma', 'dtype', 
-    'training_data', 'validation_data', 'nsims_training', 'nsims_validation',
+    'training_data', 'validation_data', 'nsims_training', 'nsims_validation', 
+    'init_phi_bias_args', 'init_phi_bias_method', 
+    'init_phi_weights_args', 'init_phi_weights_method', 
+    'init_tilt_bias_args', 'init_tilt_bias_method', 
+    'init_tilt_weights_args', 'init_tilt_weights_method',
+    'loss', 'learning_rate', 'optimizer'
 }
 
 def load_args_from_log(logfilepath, args_to_load=ARGS_TO_LOAD):
